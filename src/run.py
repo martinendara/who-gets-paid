@@ -82,19 +82,65 @@ def _parse_engines(value: str) -> list[str]:
     return engines
 
 
-def _read_existing(path: Path) -> dict:
+def _new_state(*, track_pairs: bool) -> dict:
     state = {
-        "pairs": set(),
         "lines": 0,
         "errors": 0,
         "known_cost": 0.0,
         "unknown_cost": 0,
         "searches": 0,
+        "gemini_searches": 0,
         "answers_by_engine": {},
         "known_cost_by_engine": {},
         "known_cost_n_by_engine": {},
-        "gemini_searches": 0,
     }
+    if track_pairs:
+        state["done_pairs"] = set()
+        state["seen_pairs"] = set()
+    return state
+
+
+def _accumulate_record(state: dict, record: dict, *, track_pairs: bool) -> None:
+    engine = record.get("engine")
+    state["lines"] += 1
+
+    if track_pairs:
+        pair = (record.get("query_id"), engine)
+        state["seen_pairs"].add(pair)
+        # A pair is done when it has at least one error-free record. Error
+        # records stay in the file as history; metrics must use the latest
+        # error-free record for each pair.
+        if not record.get("error"):
+            state["done_pairs"].add(pair)
+
+    if record.get("error"):
+        state["errors"] += 1
+
+    search_count = record.get("search_count")
+    if isinstance(search_count, (int, float)):
+        state["searches"] += search_count
+        if engine == "gemini":
+            state["gemini_searches"] += search_count
+
+    state["answers_by_engine"][engine] = (
+        state["answers_by_engine"].get(engine, 0) + 1
+    )
+
+    record_cost = record.get("cost_usd")
+    if isinstance(record_cost, (int, float)):
+        state["known_cost"] += record_cost
+        state["known_cost_by_engine"][engine] = (
+            state["known_cost_by_engine"].get(engine, 0.0) + record_cost
+        )
+        state["known_cost_n_by_engine"][engine] = (
+            state["known_cost_n_by_engine"].get(engine, 0) + 1
+        )
+    else:
+        state["unknown_cost"] += 1
+
+
+def _read_run_file(path: Path) -> dict:
+    state = _new_state(track_pairs=True)
     if not path.exists():
         return state
 
@@ -107,35 +153,28 @@ def _read_existing(path: Path) -> dict:
                 record = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise SystemExit(f"{path}:{line_no}: malformed JSON: {exc}") from exc
+            _accumulate_record(state, record, track_pairs=True)
+    return state
 
-            state["lines"] += 1
-            engine = record.get("engine")
-            state["pairs"].add((record.get("query_id"), engine))
-            state["answers_by_engine"][engine] = (
-                state["answers_by_engine"].get(engine, 0) + 1
-            )
 
-            if record.get("error"):
-                state["errors"] += 1
+def _read_all_runs(runs_dir: Path) -> dict:
+    state = _new_state(track_pairs=False)
+    if not runs_dir.exists():
+        return state
 
-            search_count = record.get("search_count")
-            if isinstance(search_count, (int, float)):
-                state["searches"] += search_count
-                if engine == "gemini":
-                    state["gemini_searches"] += search_count
-
-            record_cost = record.get("cost_usd")
-            if isinstance(record_cost, (int, float)):
-                state["known_cost"] += record_cost
-                state["known_cost_by_engine"][engine] = (
-                    state["known_cost_by_engine"].get(engine, 0.0) + record_cost
-                )
-                state["known_cost_n_by_engine"][engine] = (
-                    state["known_cost_n_by_engine"].get(engine, 0) + 1
-                )
-            else:
-                state["unknown_cost"] += 1
-
+    for path in sorted(runs_dir.glob("*/answers.jsonl")):
+        with path.open("r", encoding="utf-8") as handle:
+            for line_no, line in enumerate(handle, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise SystemExit(
+                        f"{path}:{line_no}: malformed JSON: {exc}"
+                    ) from exc
+                _accumulate_record(state, record, track_pairs=False)
     return state
 
 
@@ -158,17 +197,26 @@ def _ceiling() -> float:
     return value
 
 
-def _print_summary(state: dict, new_writes: int) -> None:
-    print(f"Answers written: {state['lines']} ({new_writes} new)")
-    print(f"Errors: {state['errors']}")
-    print(f"Total cost (known): ${state['known_cost']:.6f}")
-    if state["unknown_cost"]:
-        print(f"Records with unknown cost: {state['unknown_cost']}")
-    print(f"Total searches: {state['searches']}")
-    if state["gemini_searches"] > prices.GEMINI_SEARCH_FREE_REQUESTS_PER_MONTH:
+def _print_summary(
+    current: dict, global_state: dict, new_writes: int, retried: int
+) -> None:
+    print(
+        f"Answers written (this run): {current['lines']} "
+        f"({new_writes} new, {retried} retried)"
+    )
+    print(f"Errors (this run): {current['errors']}")
+    print(f"Total cost (all runs, known): ${global_state['known_cost']:.6f}")
+    print(f"This run cost (known): ${current['known_cost']:.6f}")
+    if global_state["unknown_cost"]:
         print(
-            "WARNING: Gemini searches exceed the 5,000/month free allowance; "
-            "search overage is not included in the known cost.",
+            "Records with unknown cost (all runs): "
+            f"{global_state['unknown_cost']}"
+        )
+    print(f"Total searches (all runs): {global_state['searches']}")
+    if global_state["gemini_searches"] > prices.GEMINI_SEARCH_FREE_REQUESTS_PER_MONTH:
+        print(
+            "WARNING: Gemini searches across all runs exceed the 5,000/month "
+            "free allowance; search overage is not included in the known cost.",
             file=sys.stderr,
         )
 
@@ -205,17 +253,20 @@ def main(argv: list[str] | None = None) -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
     output_path = run_dir / "answers.jsonl"
 
-    state = _read_existing(output_path)
+    current = _read_run_file(output_path)
+    global_state = _read_all_runs(Path("runs"))
     new_writes = 0
+    retried = 0
     ceiling_hit = False
 
-    if state["known_cost"] >= ceiling:
+    if global_state["known_cost"] >= ceiling:
         print(
-            f"STOP: existing known cost ${state['known_cost']:.6f} already reaches "
+            f"STOP: known cost across all runs "
+            f"${global_state['known_cost']:.6f} already reaches "
             f"PILOT_CEILING_USD ${ceiling:.2f}.",
             file=sys.stderr,
         )
-        _print_summary(state, new_writes)
+        _print_summary(current, global_state, new_writes, retried)
         return 2
 
     for query in queries:
@@ -223,9 +274,10 @@ def main(argv: list[str] | None = None) -> int:
             break
         for engine_name in engine_names:
             pair = (query["query_id"], engine_name)
-            if pair in state["pairs"]:
+            if pair in current["done_pairs"]:
                 continue
 
+            is_retry = pair in current["seen_pairs"]
             result = ENGINES[engine_name](query["text"])
             record = {
                 "query_id": query["query_id"],
@@ -236,47 +288,29 @@ def main(argv: list[str] | None = None) -> int:
             record["cost_usd"] = record_cost
             _append_record(output_path, record)
 
-            state["pairs"].add(pair)
-            state["lines"] += 1
+            _accumulate_record(current, record, track_pairs=True)
+            _accumulate_record(global_state, record, track_pairs=False)
             new_writes += 1
-            state["answers_by_engine"][engine_name] = (
-                state["answers_by_engine"].get(engine_name, 0) + 1
-            )
-            if record.get("error"):
-                state["errors"] += 1
+            if is_retry:
+                retried += 1
 
-            search_count = record.get("search_count")
-            if isinstance(search_count, (int, float)):
-                state["searches"] += search_count
-                if engine_name == "gemini":
-                    state["gemini_searches"] += search_count
-
-            if record_cost is None:
-                state["unknown_cost"] += 1
-            else:
-                state["known_cost"] += record_cost
-                state["known_cost_by_engine"][engine_name] = (
-                    state["known_cost_by_engine"].get(engine_name, 0.0) + record_cost
-                )
-                state["known_cost_n_by_engine"][engine_name] = (
-                    state["known_cost_n_by_engine"].get(engine_name, 0) + 1
-                )
-
-            if state["known_cost"] > ceiling:
+            if global_state["known_cost"] > ceiling:
                 ceiling_hit = True
                 print(
-                    f"STOP: known cost ${state['known_cost']:.6f} exceeds "
+                    f"STOP: known cost across all runs "
+                    f"${global_state['known_cost']:.6f} exceeds "
                     f"PILOT_CEILING_USD ${ceiling:.2f}. No further calls were made.",
                     file=sys.stderr,
                 )
                 break
 
-    _print_summary(state, new_writes)
+    _print_summary(current, global_state, new_writes, retried)
 
     is_smoke = run_id == "smoke" or input_path.name == "smoke.csv"
+    projection = None
     if is_smoke:
-        projection = _smoke_projection(state)
-        n = state["known_cost_n_by_engine"].get("claude", 0)
+        projection = _smoke_projection(current)
+        n = current["known_cost_n_by_engine"].get("claude", 0)
         if projection is None:
             print("Claude cost per question: null (no Claude answer with known cost)")
             print(f"Projection x{SMOKE_PROJECTION_N}: null")
@@ -296,10 +330,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if ceiling_hit:
         return 2
-    if is_smoke:
-        projection = _smoke_projection(state)
-        if projection is not None and projection > SMOKE_PROJECTION_LIMIT_USD:
-            return 3
+    if projection is not None and projection > SMOKE_PROJECTION_LIMIT_USD:
+        return 3
     return 0
 
 
