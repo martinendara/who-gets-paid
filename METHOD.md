@@ -26,14 +26,16 @@ The hypothesis is directional but does not fix a magnitude. The pilot reports de
 
 ## 4. Question design
 
-Each story receives four queries:
+Each story receives four queries in a 2×2 design by language and phrasing:
 
-- two in Spanish (`lang=es`) and two in English (`lang=en`);
-- in each language, one **direct** query that asks for the central fact, and one **open** query that asks about the topic without stating the fact;
-- no query names the outlet, links to the story, or contains a wrapper instruction;
-- the English queries ask about the same fact, not a different fact.
+| `type` | Spanish (`lang=es`) | English (`lang=en`) |
+|---|---|---|
+| `direct` | asks for the central fact | asks for the same fact |
+| `open` | asks about the topic without stating the fact | asks about the same topic without stating the fact |
 
-The exact text of the four queries is fixed in `queries.csv` before the first real query. The `type` field distinguishes `direct`, `open`, and `user`; the preregistered primary comparison uses `direct` and `open`. `user`-type phrasing is exploratory and does not enter the primary analysis unless added by amendment before the first real query.
+- No query names the outlet, links to the story, or contains a wrapper instruction.
+- The `type` field is `direct` or `open`; no other query type is used.
+- The exact text of the four queries is fixed in `queries.csv` before the first real query.
 
 Queries are sent verbatim (D17): no system prompt, no prefix, no rephrasing by the runner.
 

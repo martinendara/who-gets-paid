@@ -25,7 +25,7 @@ never committed.
 | `query_id` | string | Unique query identifier |
 | `story_id` | string | Foreign key to `stories.csv` |
 | `lang` | enum | `es` or `en` |
-| `type` | enum | `direct`, `open`, or `user` |
+| `type` | enum | `direct` or `open` |
 | `text` | string | Query text sent verbatim to the engine; never names the outlet |
 
 ## `runs/<run_id>/answers.jsonl`
