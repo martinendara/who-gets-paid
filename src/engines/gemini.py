@@ -90,7 +90,16 @@ def ask(query_text: str) -> dict:
 
         usage = getattr(response, "usage_metadata", None)
         input_tokens = getattr(usage, "prompt_token_count", None) if usage else None
-        output_tokens = getattr(usage, "response_token_count", None) if usage else None
+        output_tokens = None
+        if usage is not None:
+            candidates_tokens = getattr(usage, "candidates_token_count", None)
+            if candidates_tokens is None:
+                candidates_tokens = getattr(usage, "response_token_count", None)
+            if candidates_tokens is not None:
+                # Thinking tokens are billed as output too.
+                output_tokens = candidates_tokens + (
+                    getattr(usage, "thoughts_token_count", None) or 0
+                )
 
         return {
             "engine": "gemini",
