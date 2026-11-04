@@ -14,7 +14,7 @@ The hypothesis is directional but does not fix a magnitude. The pilot reports de
 
 ## 3. Sampling frame
 
-- **Outlets:** 10 Spanish-language outlets, five from Argentina and five from Chile, balanced across large and small outlets (`outlet_size`). Outlet names are kept only in `data/private/`; the public file uses anonymized IDs (`AR-L1`, `AR-S3`, `CL-S1`, …).
+- **Outlets:** 10 Spanish-language outlets: five from Argentina and five from Chile; in each country, one large outlet and four small outlets (`outlet_size`). Outlet names are kept only in `data/private/`; the public file uses anonymized IDs (`AR-L1`, `AR-S3`, `CL-S1`, …).
 - **Stories:** 40 stories, four per outlet. Each story is a factual news story whose central fact is stated in `fact_key`.
 - **Origin criteria:** a story enters the sample only if it meets at least one of:
   - `first_published`: the outlet published the fact before other outlets;
@@ -75,11 +75,13 @@ Codes A–E are assigned by code, not by the classifier:
 | D | `fact_present=yes` and no cited host is classified (no citations, or only `other` hosts) |
 | E | `fact_present=no` or `fact_present=wrong` |
 
+D is always reported split into D-none (no citations) and D-other (only unclassifiable hosts, e.g. wikipedia.org returned by Gemini without language subdomain).
+
 If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`).
 
 ## 7. Metrics
 
-All metrics are ratios with an explicit denominator. If the denominator is 0, the metric is `null`, not 0. Every ratio is bounded by 0 and 1; a value outside that range is a bug.
+All metrics are ratios with an explicit denominator. If the denominator is 0, the metric is `null`, not 0. Every rate is bounded by 0 and 1; the attribution gap is bounded by −1 and 1. A value outside that range is a bug.
 
 Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers with the fact present and correct).
 
@@ -87,7 +89,9 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - **Original-attribution rate:** `A / P`. Denominator: answers with the fact present and correct.
 - **Spanish-source displacement rate:** `B / P`.
 - **English-source displacement rate:** `C / P`.
-- **No-classified-citation rate:** `D / P`.
+- **No-classified-citation rate:** `D / P`, with `D = D-none + D-other`.
+- **D-none rate:** `D-none / P` (fact present, no citations).
+- **D-other rate:** `D-other / P` (fact present, only unclassifiable hosts).
 - **Attribution gap (Spanish minus English):**
   `A_es / P_es − A_en / P_en`.
   Denominator: answers with the fact present and correct in each language. If either language denominator is 0, the gap is `null`.
