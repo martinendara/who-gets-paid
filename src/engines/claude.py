@@ -51,7 +51,12 @@ def ask(query_text: str) -> dict:
         )
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        # Pin the official endpoint and pass the key explicitly so the SDK does
+        # not inherit ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN from the harness.
+        client = anthropic.Anthropic(
+            api_key=api_key,
+            base_url="https://api.anthropic.com",
+        )
         messages = [{"role": "user", "content": query_text}]
         answer_parts: list[str] = []
         citations: list[dict] = []
