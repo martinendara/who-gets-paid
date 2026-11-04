@@ -14,8 +14,8 @@ The hypothesis is directional but does not fix a magnitude. The pilot reports de
 
 ## 3. Sampling frame
 
-- **Outlets:** 10 Spanish-language outlets: five from Argentina and five from Chile; in each country, one large outlet and four small outlets (`outlet_size`). Outlet names are kept only in `data/private/`; the public file uses anonymized IDs (`AR-L1`, `AR-S3`, `CL-S1`, …).
-- **Stories:** 40 stories, four per outlet. Each story is a factual news story whose central fact is stated in `fact_key`.
+- **Outlets:** the five most-used Spanish-language written or digital-first news brands in Argentina and the five in Chile (broadcast-led brands excluded), listed in `data/private/outlets.csv` with the source used to rank them.
+- **Stories:** each story is a scoop that originated in the outlet in its home country and was later reproduced by at least one English-language outlet. The English replica's URL is recorded (`english_replica_url`, private). Because every story has an English replica by design, English-source displacement (C) is measured conditional on an English alternative existing; the pilot does not estimate how often such replicas exist. The sample is 40 stories, four per outlet, and each story's central fact is stated in `fact_key`.
 - **Origin criteria:** a story enters the sample only if it meets at least one of:
   - `first_published`: the outlet published the fact before other outlets;
   - `own_investigation`: the outlet produced the investigation or original reporting;
@@ -23,6 +23,7 @@ The hypothesis is directional but does not fix a magnitude. The pilot reports de
 - **Origin evidence:** each story records a URL or a description supporting the criterion in `origin_evidence` (private version keeps the URL).
 - **Selection:** the sample is purposive, not probabilistic. It is fixed in `stories.csv` before the first real query. No story is added or removed after seeing model outputs.
 - **Private/public split:** `data/private/` holds URLs and real outlet names and is never committed. The public `data/stories.csv` is anonymized.
+- **Feasibility run (D33):** before the first query of the sample, a technical run with 5 stories that are NOT part of the 40-story sample checks that all four engines and the parser work. Its `run_id` starts with `cut-`, and it is excluded from every metric.
 
 ## 4. Question design
 
@@ -45,12 +46,19 @@ Queries are sent verbatim (D17): no system prompt, no prefix, no rephrasing by t
 |---|---|---|---|---|
 | Gemini | `gemini-3.5-flash-lite` | `google_search` via `generateContent` | `google-genai==2.34.0` | 2026-11-04 |
 | Claude | `claude-haiku-5-5` | `web_search_20250305` | `anthropic==2.4.0` | 2026-11-04 |
-| OpenAI | to be fixed in IMPL-02, before the first real query | to be fixed in IMPL-02 | — | — |
-| Perplexity | to be fixed in IMPL-02, before the first real query | to be fixed in IMPL-02 | — | — |
+| OpenAI | `gpt-6-luna` | `web_search` via Responses API | `openai==3.45.0` | 2026-11-04 |
+| Perplexity | `perplexity/sonar` via Agent API | `web_search` | `perplexityai==0.46.1` | 2026-11-04 |
 
 - **Gemini pricing:** USD 0.30 input / USD 2.50 output per 1M tokens. Google Search is free up to 5,000 requests per month on the paid tier, then USD 14 per 1,000 requests. The project has billing enabled; only tokens are charged during the pilot.
 - **Claude pricing:** Haiku 5.5 costs USD 0.10 input / USD 0.50 output per 1M tokens for prompts up to 100,000 tokens, and USD 0.50 / USD 2.50 above that threshold. Web search is USD 10 per 1,000 searches.
-- **Execution:** each `(query_id, engine)` pair is queried once per run and stored as one JSONL record. The record includes the requested model, the model version reported by the API, the answer text, citations, retrieved results (Claude only), search count, token usage, cost, and any error.
+- **OpenAI pricing:** gpt-6-luna costs USD 0.10 input / USD 0.50 output per 1M tokens. Web search is USD 10 per 1,000 calls plus search content tokens at model rates.
+- **Perplexity pricing:** perplexity/sonar costs USD 0.25 input / USD 2.50 output per 1M tokens. Web search is USD 2.50 per 1,000 invocations. The provider's `usage.cost.total_cost` is stored as `api_cost_usd` and used as the record's cost; it is not estimated.
+
+OpenAI's free ChatGPT default moved from GPT-5.6 Luna to GPT-6 Luna in a staged rollout starting 8 October 2026; OpenAI's own help pages lagged the rollout. The pilot audits gpt-6-luna.
+
+Perplexity does not publish its free-plan default model; third-party sources describe it as Sonar. Sonar Chat Completions ended on 27 September 2026; the pilot calls perplexity/sonar explicitly through the Agent API, without effort presets, which route to third-party models.
+
+- **Execution:** each `(query_id, engine)` pair is queried once per run and stored as one JSONL record. The record includes the requested model, the model version reported by the API, the answer text, citations, retrieved results (when the API returns them), search count, token usage, cost, and any error.
 - **Resume:** a pair already present in `runs/<run_id>/answers.jsonl` is skipped and not paid for again.
 - **Ceiling:** the runner stops when cumulative known cost exceeds `PILOT_CEILING_USD` (default USD 20).
 - **Nulls:** a missing cost, denominator, or usage datum is stored as `null`, never as 0.
@@ -63,7 +71,7 @@ The classifier makes one judgment per answer: whether the central fact is presen
 - `fact_present = no`: the answer does not state the central fact.
 - `fact_present = wrong`: the answer states the central fact incorrectly.
 
-The classifier is an LLM that only returns `yes`, `no`, or `wrong`. It is not one of the audited engines. The classifier model and the prompt version are recorded in `labels.csv`; the prompt lives in `prompts/` and every change creates a new version. The classifier is fixed in IMPL-02 before classification starts.
+The classifier is an LLM that only returns `yes`, `no`, or `wrong`. It is not one of the audited engines. The classifier model and the prompt version are recorded in `labels.csv`; the prompt lives in `prompts/` and every change creates a new version. The classifier is fixed in IMPL-02 before classification starts. The classifier sees only the reference fact and the answer text, never the engine name, the citations or the query. Classifier: `deepseek-flash`, prompt `prompts/classifier_v1.md`. Classifier cost is computed at the peak rate without cache discounts, as an upper bound.
 
 Codes A–E are assigned by code, not by the classifier:
 
@@ -77,7 +85,7 @@ Codes A–E are assigned by code, not by the classifier:
 
 D is always reported split into D-none (no citations) and D-other (only unclassifiable hosts, e.g. wikipedia.org returned by Gemini without language subdomain).
 
-If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`).
+If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`). If Spanish-language and English-language hosts are both cited without the original, the code is B and `en_also_cited` is recorded. A cited host absent from `host_language.csv` blocks code assignment; it is never defaulted to `other`.
 
 ## 7. Metrics
 
@@ -95,7 +103,7 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - **Attribution gap (Spanish minus English):**
   `A_es / P_es − A_en / P_en`.
   Denominator: answers with the fact present and correct in each language. If either language denominator is 0, the gap is `null`.
-- **Per-engine and per-country breakdowns:** the same ratios with the corresponding denominators. Report counts alongside every rate.
+- **Breakdowns:** the same ratios with the corresponding denominators, by engine, by country and by question language. Report counts alongside every rate.
 
 **Costs:** total known cost is the sum of non-null `cost_usd` values. If any record has a null cost, report the number of records with unknown cost and do not present the sum as complete.
 
@@ -113,6 +121,7 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - The sample is purposive and small (10 outlets, 40 stories, 4 queries per story); results are descriptive and not generalizable to all Spanish-language media.
 - Engines are proprietary and change over time. Each record stores `run_at` and `model_version`; a later run is a new observation, not a replication of the same engine state.
 - Search results vary with location, time, and personalization. The runner does not control search location beyond API defaults.
+- Perplexity citations are reconstructed from inline markers that point to search results; markers that do not resolve are counted (`unresolved_markers`) and reported.
 - Citation presence is not the same as legal attribution, licensing, or payment. The pilot measures what the engine displays, not the underlying commercial arrangement.
 - The classifier is an LLM; human validation covers only 20% of answers. Human coding itself may be error-prone.
 - Host language is assigned manually in `host_language.csv`; bilingual or regional hosts may be misclassified.
