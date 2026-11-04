@@ -11,15 +11,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from src import prices
-from src.engines import claude, gemini
+from src.engines import claude, gemini, openai_engine, perplexity
 
 ENGINES = {
     "gemini": gemini.ask,
+    "openai": openai_engine.ask,
     "claude": claude.ask,
+    "perplexity": perplexity.ask,
 }
 DEFAULT_RUN_ID_PREFIX = "run-"
 SMOKE_PROJECTION_N = 160
-SMOKE_PROJECTION_LIMIT_USD = 10.0
+SMOKE_PROJECTION_LIMIT_USD = 15.0
 
 
 def _utc_now() -> str:
@@ -221,21 +223,13 @@ def _print_summary(
         )
 
 
-def _smoke_projection(state: dict) -> float | None:
-    n = state["known_cost_n_by_engine"].get("claude", 0)
-    if not n:
-        return None
-    per_question = state["known_cost_by_engine"].get("claude", 0.0) / n
-    return per_question * SMOKE_PROJECTION_N
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run raw queries through the configured engines."
     )
     parser.add_argument("--file", required=True, help="CSV with query_id,text")
     parser.add_argument(
-        "--engines", required=True, help="Comma-separated engines: gemini,claude"
+        "--engines", required=True, help="Comma-separated engines: gemini,openai,claude,perplexity"
     )
     parser.add_argument("--run-id", default=None, help="Run identifier")
     args = parser.parse_args(argv)
@@ -307,30 +301,59 @@ def main(argv: list[str] | None = None) -> int:
     _print_summary(current, global_state, new_writes, retried)
 
     is_smoke = run_id == "smoke" or input_path.name == "smoke.csv"
-    projection = None
+    total_projection = None
     if is_smoke:
-        projection = _smoke_projection(current)
-        n = current["known_cost_n_by_engine"].get("claude", 0)
-        if projection is None:
-            print("Claude cost per question: null (no Claude answer with known cost)")
-            print(f"Projection x{SMOKE_PROJECTION_N}: null")
+        projections: dict[str, float | None] = {}
+        missing: list[str] = []
+        for engine_name in engine_names:
+            n = current["known_cost_n_by_engine"].get(engine_name, 0)
+            if not n:
+                print(f"{engine_name} cost per question: null (n=0)")
+                print(f"{engine_name} projection x{SMOKE_PROJECTION_N}: null")
+                missing.append(engine_name)
+                projections[engine_name] = None
+                continue
+            per_question = (
+                current["known_cost_by_engine"].get(engine_name, 0.0) / n
+            )
+            projection = per_question * SMOKE_PROJECTION_N
+            projections[engine_name] = projection
+            print(
+                f"{engine_name} cost per question: ${per_question:.6f} (n={n})"
+            )
+            print(
+                f"{engine_name} projection x{SMOKE_PROJECTION_N}: "
+                f"${projection:.2f}"
+            )
+        if missing:
+            print(
+                f"Total projection x{SMOKE_PROJECTION_N}: null "
+                f"(no known cost for: {', '.join(missing)})"
+            )
         else:
-            per_question = projection / SMOKE_PROJECTION_N
-            print(f"Claude cost per question: ${per_question:.6f} (n={n})")
-            print(f"Projection x{SMOKE_PROJECTION_N}: ${projection:.2f}")
-            if projection > SMOKE_PROJECTION_LIMIT_USD:
+            total_projection = sum(
+                projection
+                for projection in projections.values()
+                if projection is not None
+            )
+            print(
+                f"Total projection x{SMOKE_PROJECTION_N}: "
+                f"${total_projection:.2f}"
+            )
+            if total_projection > SMOKE_PROJECTION_LIMIT_USD:
                 print(
-                    f"STOP: projected Claude cost ${projection:.2f} for "
+                    f"STOP: projected cost ${total_projection:.2f} for "
                     f"{SMOKE_PROJECTION_N} questions exceeds "
-                    f"USD {SMOKE_PROJECTION_LIMIT_USD:.2f}. Switch to "
-                    "claude-haiku-5-5 before the first real query, or raise the "
-                    "budget explicitly.",
+                    f"USD {SMOKE_PROJECTION_LIMIT_USD:.2f}.",
                     file=sys.stderr,
                 )
 
     if ceiling_hit:
         return 2
-    if projection is not None and projection > SMOKE_PROJECTION_LIMIT_USD:
+    if (
+        total_projection is not None
+        and total_projection > SMOKE_PROJECTION_LIMIT_USD
+    ):
         return 3
     return 0
 
