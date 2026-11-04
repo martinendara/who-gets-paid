@@ -4,3 +4,7 @@
 {"query_id": "q_c", "engine": "gemini", "citations": [{"url": "https://en-news.example/c", "title": "C", "host": "en-news.example"}], "error": null}
 {"query_id": "q_d_none", "engine": "gemini", "citations": [], "error": null}
 {"query_id": "q_missing", "engine": "gemini", "citations": [{"url": "https://missing.example/x", "title": null, "host": "missing.example"}], "error": null}
+{"query_id": "q_e_no", "engine": "gemini", "citations": [{"url": "https://original-e.example/e", "title": "E no", "host": "original-e.example"}], "retrieved": [{"url": "https://es-news.example/e", "title": "es", "host": "es-news.example"}], "error": null}
+{"query_id": "q_e_wrong", "engine": "gemini", "citations": [{"url": "https://original-e-wrong.example/e", "title": "E wrong", "host": "original-e-wrong.example"}], "retrieved": [{"url": "https://en-news.example/e", "title": "en", "host": "en-news.example"}], "error": null}
+{"query_id": "q_d_other", "engine": "gemini", "citations": [{"url": "https://other-wiki.example/d", "title": "other", "host": "other-wiki.example"}], "retrieved": [{"url": "https://other-wiki.example/d", "title": "other", "host": "other-wiki.example"}], "error": null}
+{"query_id": "q_found", "engine": "gemini", "citations": [{"url": "https://es-news.example/f", "title": "es", "host": "es-news.example"}], "retrieved": [{"url": "https://original-f.example/f", "title": "original", "host": "original-f.example"}, {"url": "https://es-news.example/f", "title": "es", "host": "es-news.example"}], "error": null}

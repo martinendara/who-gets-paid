@@ -28,6 +28,7 @@ FIELDNAMES = [
     "code",
     "d_split",
     "en_also_cited",
+    "original_in_retrieved",
     "human_code",
 ]
 
@@ -128,6 +129,31 @@ def _assign(
     return "D", ("none" if not hosts else "other"), False
 
 
+def _original_in_retrieved(
+    original_host: str,
+    retrieved,
+    aliases: dict[str, str],
+) -> bool | None:
+    """Return whether the original host appears in retrieved sources.
+
+    ``None`` means retrieved is null or not a list (Gemini does not expose it).
+    """
+    if not isinstance(retrieved, list):
+        return None
+    effective_original = aliases.get(original_host, original_host)
+    for item in retrieved:
+        if not isinstance(item, dict):
+            continue
+        host = item.get("host")
+        if not host:
+            host = canonical_host(item.get("url"))
+        if host is None:
+            continue
+        if host == original_host or aliases.get(host, host) == effective_original:
+            return True
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Assign A-E codes from blind labels and citations."
@@ -182,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
 
     host_languages, aliases = _read_host_language(Path(args.host_language))
 
-    pending: list[tuple[dict, str | None, list[str], str]] = []
+    pending: list[tuple[dict, str | None, list[str], str, object]] = []
     missing_hosts: set[str] = set()
     for pair, label in labels.items():
         query_id, engine = pair
@@ -225,7 +251,9 @@ def main(argv: list[str] | None = None) -> int:
             hosts.append(host)
             if host not in host_languages:
                 missing_hosts.add(host)
-        pending.append((label, fact_present, hosts, original_host))
+        pending.append(
+            (label, fact_present, hosts, original_host, answer.get("retrieved"))
+        )
 
     if missing_hosts:
         print(
@@ -237,13 +265,16 @@ def main(argv: list[str] | None = None) -> int:
         return 4
 
     rows: list[dict] = []
-    for label, fact_present, hosts, original_host in pending:
+    for label, fact_present, hosts, original_host, retrieved in pending:
         code, d_split, en_also_cited = _assign(
             fact_present,
             hosts,
             original_host,
             host_languages,
             aliases,
+        )
+        original_in_retrieved = _original_in_retrieved(
+            original_host, retrieved, aliases
         )
         rows.append(
             {
@@ -255,6 +286,11 @@ def main(argv: list[str] | None = None) -> int:
                 "code": code,
                 "d_split": d_split,
                 "en_also_cited": "true" if en_also_cited else "false",
+                "original_in_retrieved": (
+                    ""
+                    if original_in_retrieved is None
+                    else ("true" if original_in_retrieved else "false")
+                ),
                 "human_code": "",
             }
         )

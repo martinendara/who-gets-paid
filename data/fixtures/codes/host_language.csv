@@ -8,3 +8,5 @@ es-news.example,es,
 en-news.example,en,
 other-wiki.example,other,
 alias.example,es,alias of original-a.example
+original-e.example,es,
+original-e-wrong.example,es,

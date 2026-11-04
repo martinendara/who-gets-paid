@@ -105,6 +105,8 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
   Denominator: answers with the fact present and correct in each language. If either language denominator is 0, the gap is `null`.
 - **Breakdowns:** the same ratios with the corresponding denominators, by engine, by country and by question language. Report counts alongside every rate.
 
+**Secondary metric — found but not cited:** the share of answers with `fact_present = yes` whose retrieved sources include the original outlet's host but whose citations do not. Denominator: answers with `fact_present = yes` from engines that expose retrieved sources (Gemini excluded). Reported per engine.
+
 **Costs:** total known cost is the sum of non-null `cost_usd` values. If any record has a null cost, report the number of records with unknown cost and do not present the sum as complete.
 
 ## 8. Human validation

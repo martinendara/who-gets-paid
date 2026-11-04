@@ -5,3 +5,7 @@ q_b_en,s_b_en,es,direct,Fixture query B with an English host
 q_c,s_c,es,direct,Fixture query C
 q_d_none,s_d,es,direct,Fixture query D without citations
 q_missing,s_missing,es,direct,Fixture query with an unknown host
+q_e_no,s_e_no,es,direct,Fixture query E with fact no
+q_e_wrong,s_e_wrong,es,direct,Fixture query E with fact wrong
+q_d_other,s_d_other,es,direct,Fixture query D with only other hosts
+q_found,s_found,es,direct,Fixture query found but not cited

@@ -62,6 +62,7 @@ One JSON object per line, one line per `(query_id, engine)` pair.
 | `code` | enum or empty | `A`–`E`; assigned by code from `fact_present` and citation data; empty when `fact_present` is empty |
 | `d_split` | enum or empty | `none` or `other` when `code` is `D`; empty otherwise |
 | `en_also_cited` | boolean | `true` when code `B` and an English-language host is also cited; `false` otherwise |
+| `original_in_retrieved` | boolean or empty | `true` when the original outlet's host appears among retrieved sources (alias applied); `false` when retrieved is a list without it; empty when retrieved is null |
 | `human_code` | enum or empty | Human label for the blind validation sample; empty otherwise |
 
 ## `runs/<run_id>/labels_raw.jsonl`

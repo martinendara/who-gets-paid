@@ -5,3 +5,7 @@ s_b_en,https://original-b-en.example/scoop,Fixture fact B with an English host
 s_c,https://original-c.example/scoop,Fixture fact C
 s_d,https://original-d.example/scoop,Fixture fact D
 s_missing,https://original-m.example/scoop,Fixture fact with an unknown host
+s_e_no,https://original-e.example/scoop,Fixture fact E no
+s_e_wrong,https://original-e-wrong.example/scoop,Fixture fact E wrong
+s_d_other,https://original-d-other.example/scoop,Fixture fact D other
+s_found,https://original-f.example/scoop,Fixture fact found not cited
