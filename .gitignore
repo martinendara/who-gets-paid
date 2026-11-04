@@ -1,0 +1,6 @@
+.env
+.venv/
+venv/
+data/private/
+runs/
+__pycache__/
