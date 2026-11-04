@@ -1,0 +1,6 @@
+{"query_id": "q_a", "engine": "gemini", "citations": [{"url": "https://original-a.example/a", "title": "A", "host": "original-a.example"}], "error": null}
+{"query_id": "q_b", "engine": "gemini", "citations": [{"url": "https://es-news.example/b", "title": "B", "host": "es-news.example"}], "error": null}
+{"query_id": "q_b_en", "engine": "gemini", "citations": [{"url": "https://es-news.example/b", "title": "B es", "host": "es-news.example"}, {"url": "https://en-news.example/b", "title": "B en", "host": "en-news.example"}], "error": null}
+{"query_id": "q_c", "engine": "gemini", "citations": [{"url": "https://en-news.example/c", "title": "C", "host": "en-news.example"}], "error": null}
+{"query_id": "q_d_none", "engine": "gemini", "citations": [], "error": null}
+{"query_id": "q_missing", "engine": "gemini", "citations": [{"url": "https://missing.example/x", "title": null, "host": "missing.example"}], "error": null}

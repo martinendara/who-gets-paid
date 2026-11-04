@@ -119,3 +119,31 @@ def cost(record: dict) -> float | None:
 
     _warn(f"no price table for engine={engine!r}; cost is null")
     return None
+
+# DeepSeek classifier, used as an upper bound (D32b).
+# https://api-docs.deepseek.com/quick_start/pricing (verified 2026-11-04)
+# deepseek-flash peak rates without cache discounts:
+# USD 0.30 input (cache miss) / USD 1.20 output per 1M tokens.
+DEEPSEEK_PEAK_INPUT_USD_PER_MTOK = 0.30
+DEEPSEEK_PEAK_OUTPUT_USD_PER_MTOK = 1.20
+
+
+def classifier_cost(usage: dict | None) -> float | None:
+    """Return the upper-bound USD cost of one DeepSeek classifier call.
+
+    Peak rate, no cache discount, always. A missing usage datum is null.
+    """
+    if not isinstance(usage, dict):
+        _warn("missing classifier usage; cost is null")
+        return None
+    input_tokens = usage.get("input_tokens")
+    output_tokens = usage.get("output_tokens")
+    if not isinstance(input_tokens, (int, float)) or not isinstance(
+        output_tokens, (int, float)
+    ):
+        _warn("missing classifier token counts; cost is null")
+        return None
+    return (
+        input_tokens * DEEPSEEK_PEAK_INPUT_USD_PER_MTOK
+        + output_tokens * DEEPSEEK_PEAK_OUTPUT_USD_PER_MTOK
+    ) / 1_000_000

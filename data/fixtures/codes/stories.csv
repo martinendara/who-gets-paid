@@ -1,0 +1,7 @@
+story_id,url,fact_key
+s_a,https://original-a.example/scoop,Fixture fact A
+s_b,https://original-b.example/scoop,Fixture fact B
+s_b_en,https://original-b-en.example/scoop,Fixture fact B with an English host
+s_c,https://original-c.example/scoop,Fixture fact C
+s_d,https://original-d.example/scoop,Fixture fact D
+s_missing,https://original-m.example/scoop,Fixture fact with an unknown host

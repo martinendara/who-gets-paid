@@ -1,0 +1,7 @@
+query_id,story_id,lang,type,text
+q_a,s_a,es,direct,Fixture query A
+q_b,s_b,es,direct,Fixture query B
+q_b_en,s_b_en,es,direct,Fixture query B with an English host
+q_c,s_c,es,direct,Fixture query C
+q_d_none,s_d,es,direct,Fixture query D without citations
+q_missing,s_missing,es,direct,Fixture query with an unknown host

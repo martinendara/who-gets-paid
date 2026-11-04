@@ -1,0 +1,10 @@
+host,language,notes
+original-a.example,es,
+original-b.example,es,
+original-b-en.example,es,
+original-c.example,es,
+original-d.example,es,
+es-news.example,es,
+en-news.example,en,
+other-wiki.example,other,
+alias.example,es,alias of original-a.example
