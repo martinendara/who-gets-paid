@@ -12,7 +12,7 @@ from src.hosts import canonical_host
 # https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool
 # https://platform.claude.com/docs/en/about-claude/pricing
 # https://platform.claude.com/docs/en/about-claude/models/overview
-MODEL_ID = "claude-sonnet-5-5"
+MODEL_ID = "claude-haiku-5-5"
 WEB_SEARCH_TOOL_TYPE = "web_search_20250305"  # basic search; direct calls, no dynamic filtering
 MAX_OUTPUT_TOKENS = 4096
 MAX_CONTINUATIONS = 3

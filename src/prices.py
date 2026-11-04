@@ -6,7 +6,8 @@ Prices verified 2026-11-04:
   Google Search on the paid tier: 5,000 free requests per month (shared across
   Gemini 3 and newer), then USD 14 per 1,000 requests.
 - Claude: https://platform.claude.com/docs/en/about-claude/pricing
-  claude-sonnet-5-5: USD 2.00 input / USD 10.00 output per 1M tokens.
+  claude-haiku-5-5: USD 0.10 input / USD 0.50 output per 1M tokens for
+  prompts up to 100,000 tokens; USD 0.50 / USD 2.50 above that threshold.
   Web search: USD 10 per 1,000 searches.
 """
 
@@ -24,8 +25,11 @@ GEMINI_SEARCH_USD_PER_1000_AFTER_FREE = 14.0
 GEMINI_SEARCH_USD = 0.0
 GEMINI_FREE_TIER = False  # D26: billing is enabled; tokens are billed.
 
-CLAUDE_INPUT_USD_PER_MTOK = 2.00
-CLAUDE_OUTPUT_USD_PER_MTOK = 10.00
+CLAUDE_INPUT_USD_PER_MTOK = 0.10
+CLAUDE_OUTPUT_USD_PER_MTOK = 0.50
+CLAUDE_LONG_INPUT_USD_PER_MTOK = 0.50
+CLAUDE_LONG_OUTPUT_USD_PER_MTOK = 2.50
+CLAUDE_LONG_CONTEXT_THRESHOLD_TOKENS = 100_000
 CLAUDE_SEARCH_USD_PER_1000 = 10.0
 
 
@@ -68,9 +72,14 @@ def cost(record: dict) -> float | None:
         if not isinstance(search_count, (int, float)):
             _warn("missing search_count for engine='claude'; cost is null")
             return None
+        if input_tokens > CLAUDE_LONG_CONTEXT_THRESHOLD_TOKENS:
+            input_price = CLAUDE_LONG_INPUT_USD_PER_MTOK
+            output_price = CLAUDE_LONG_OUTPUT_USD_PER_MTOK
+        else:
+            input_price = CLAUDE_INPUT_USD_PER_MTOK
+            output_price = CLAUDE_OUTPUT_USD_PER_MTOK
         token_cost = (
-            input_tokens * CLAUDE_INPUT_USD_PER_MTOK
-            + output_tokens * CLAUDE_OUTPUT_USD_PER_MTOK
+            input_tokens * input_price + output_tokens * output_price
         ) / 1_000_000
         search_cost = search_count * (CLAUDE_SEARCH_USD_PER_1000 / 1_000)
         return token_cost + search_cost

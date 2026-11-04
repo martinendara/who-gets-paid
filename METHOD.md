@@ -44,12 +44,12 @@ Queries are sent verbatim (D17): no system prompt, no prefix, no rephrasing by t
 | Engine | API model | Search tool | SDK | Price verified |
 |---|---|---|---|---|
 | Gemini | `gemini-3.5-flash-lite` | `google_search` via `generateContent` | `google-genai==2.34.0` | 2026-11-04 |
-| Claude | `claude-sonnet-5-5` | `web_search_20250305` | `anthropic==2.4.0` | 2026-11-04 |
+| Claude | `claude-haiku-5-5` | `web_search_20250305` | `anthropic==2.4.0` | 2026-11-04 |
 | OpenAI | to be fixed in IMPL-02, before the first real query | to be fixed in IMPL-02 | — | — |
 | Perplexity | to be fixed in IMPL-02, before the first real query | to be fixed in IMPL-02 | — | — |
 
 - **Gemini pricing:** USD 0.30 input / USD 2.50 output per 1M tokens. Google Search is free up to 5,000 requests per month on the paid tier, then USD 14 per 1,000 requests. The project has billing enabled; only tokens are charged during the pilot.
-- **Claude pricing:** USD 2.00 input / USD 10.00 output per 1M tokens. Web search is USD 10 per 1,000 searches.
+- **Claude pricing:** Haiku 5.5 costs USD 0.10 input / USD 0.50 output per 1M tokens for prompts up to 100,000 tokens, and USD 0.50 / USD 2.50 above that threshold. Web search is USD 10 per 1,000 searches.
 - **Execution:** each `(query_id, engine)` pair is queried once per run and stored as one JSONL record. The record includes the requested model, the model version reported by the API, the answer text, citations, retrieved results (Claude only), search count, token usage, cost, and any error.
 - **Resume:** a pair already present in `runs/<run_id>/answers.jsonl` is skipped and not paid for again.
 - **Ceiling:** the runner stops when cumulative known cost exceeds `PILOT_CEILING_USD` (default USD 20).
@@ -114,6 +114,7 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - Host language is assigned manually in `host_language.csv`; bilingual or regional hosts may be misclassified.
 - **Technical limitation (Interactions API):** Google's current documentation foregrounds the Interactions API, whose citations are `url_citation` annotations. This pilot uses `generateContent` because it still exposes `grounding_metadata.grounding_chunks` and `web_search_queries` (D16). If that surface is removed, the Gemini adapter must be amended before the next real run.
 - The pilot does not measure whether the original outlet was paid, only whether it was cited.
+- Claude Sonnet 5.5 (successor of the documented free-plan default) was replaced by Haiku 5.5, also available on the free plan, for cost reasons, before any real query.
 
 ## 10. Amendments
 
