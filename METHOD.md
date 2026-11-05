@@ -85,7 +85,7 @@ Codes A–E are assigned by code, not by the classifier:
 
 D is always reported split into D-none (no citations) and D-other (only unclassifiable hosts, e.g. wikipedia.org returned by Gemini without language subdomain).
 
-If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`). If Spanish-language and English-language hosts are both cited without the original, the code is B and `en_also_cited` is recorded. A cited host absent from `host_language.csv` blocks code assignment; it is never defaulted to `other`.
+If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`). If Spanish-language and English-language hosts are both cited without the original, the code is B and `en_also_cited` is recorded. A cited host absent from `host_language.csv` blocks code assignment; it is never defaulted to `other`. Hosts that publish in more than one language are marked mixed; for them, language is assigned per URL in a hand-built url_language.csv, published with the host table. A cited URL from a mixed host that is absent from url_language.csv blocks code assignment.
 
 ## 7. Metrics
 

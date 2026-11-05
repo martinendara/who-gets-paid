@@ -89,5 +89,13 @@ One JSON object per line, one line per `(query_id, engine)` pair, written by
 | Column | Type | Description |
 |---|---|---|
 | `host` | string | Canonical host (lowercase, no `www.`, no port) |
-| `language` | enum | `es`, `en`, or `other` |
+| `language` | enum | `es`, `en`, `other`, or `mixed` (`mixed` = language assigned per URL in `url_language.csv`) |
 | `notes` | string | Optional notes; `alias of <host>` makes the row count as `<host>` for the original-outlet match |
+
+## `data/url_language.csv`
+
+| Column | Type | Description |
+|---|---|---|
+| `url` | string | Exact cited URL (no canonicalization) |
+| `language` | enum | `es`, `en`, or `other`; used only for hosts marked `mixed` in `host_language.csv` |
+| `notes` | string | Optional notes; the private version is `data/private/url_language_cut.csv` |

@@ -14,9 +14,11 @@ from src.hosts import canonical_host
 DEFAULT_QUERIES = Path("data/private/queries.csv")
 DEFAULT_STORIES = Path("data/private/stories.csv")
 DEFAULT_HOST_LANGUAGE = Path("data/host_language.csv")
+DEFAULT_URL_LANGUAGE = Path("data/private/url_language.csv")
 DEFAULT_OUT = Path("data/private/labels.csv")
 DEFAULT_RUNS_DIR = Path("runs")
-LANGUAGES = {"es", "en", "other"}
+HOST_LANGUAGES = {"es", "en", "other", "mixed"}
+URL_LANGUAGES = {"es", "en", "other"}
 FACT_LABELS = {"yes", "no", "wrong"}
 ALIAS_PREFIX = "alias of "
 FIELDNAMES = [
@@ -84,7 +86,7 @@ def _read_host_language(path: Path) -> tuple[dict[str, str], dict[str, str]]:
         if not host:
             raise SystemExit(f"{path}: invalid host {row.get('host')!r}")
         language = (row.get("language") or "").strip().lower()
-        if language not in LANGUAGES:
+        if language not in HOST_LANGUAGES:
             raise SystemExit(
                 f"{path}: host {host!r} has unsupported language {language!r}"
             )
@@ -103,11 +105,36 @@ def _read_host_language(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     return languages, aliases
 
 
+def _read_url_language(path: Path) -> dict[str, str]:
+    """Read exact-URL languages for hosts marked ``mixed``.
+
+    A missing file is an empty map; a cited URL that is absent then blocks
+    code assignment, as does a host missing from ``host_language.csv``.
+    """
+    languages: dict[str, str] = {}
+    if not path.exists():
+        return languages
+    for row in _read_csv(path, {"url", "language"}):
+        url = (row.get("url") or "").strip()
+        if not url:
+            raise SystemExit(f"{path}: empty url")
+        language = (row.get("language") or "").strip().lower()
+        if language not in URL_LANGUAGES:
+            raise SystemExit(
+                f"{path}: url {url!r} has unsupported language {language!r}"
+            )
+        if url in languages and languages[url] != language:
+            raise SystemExit(f"{path}: conflicting languages for url {url!r}")
+        languages[url] = language
+    return languages
+
+
 def _assign(
     fact_present: str | None,
-    hosts: list[str],
+    citations: list[tuple[str, str | None]],
     original_host: str,
     host_languages: dict[str, str],
+    url_languages: dict[str, str],
     aliases: dict[str, str],
 ) -> tuple[str, str, bool]:
     if fact_present is None:
@@ -115,18 +142,27 @@ def _assign(
     if fact_present in ("no", "wrong"):
         return "E", "", False
 
-    effective = [aliases.get(host, host) for host in hosts]
+    effective = [aliases.get(host, host) for host, _ in citations]
     if original_host in effective:
         return "A", "", False
 
-    languages = [host_languages[host] for host in hosts]
+    languages: list[str] = []
+    for host, url in citations:
+        language = host_languages[host]
+        if language == "mixed":
+            language = url_languages.get(url)
+            if language is None:
+                raise SystemExit(
+                    f"no url_language entry for {url!r} (host {host!r})"
+                )
+        languages.append(language)
     has_es = "es" in languages
     has_en = "en" in languages
     if has_es:
         return "B", "", has_en
     if has_en:
         return "C", "", False
-    return "D", ("none" if not hosts else "other"), False
+    return "D", ("none" if not citations else "other"), False
 
 
 def _original_in_retrieved(
@@ -171,6 +207,11 @@ def main(argv: list[str] | None = None) -> int:
         help="host_language.csv path",
     )
     parser.add_argument(
+        "--url-language",
+        default=str(DEFAULT_URL_LANGUAGE),
+        help="url_language.csv path (exact URLs for mixed hosts)",
+    )
+    parser.add_argument(
         "--out", default=str(DEFAULT_OUT), help="labels.csv output path"
     )
     args = parser.parse_args(argv)
@@ -207,9 +248,13 @@ def main(argv: list[str] | None = None) -> int:
         story_to_url[story_id] = url
 
     host_languages, aliases = _read_host_language(Path(args.host_language))
+    url_languages = _read_url_language(Path(args.url_language))
 
-    pending: list[tuple[dict, str | None, list[str], str, object]] = []
+    pending: list[
+        tuple[dict, str | None, list[tuple[str, str | None]], str, object]
+    ] = []
     missing_hosts: set[str] = set()
+    missing_urls: set[str] = set()
     for pair, label in labels.items():
         query_id, engine = pair
         if query_id not in query_to_story:
@@ -240,37 +285,60 @@ def main(argv: list[str] | None = None) -> int:
                 f"{query_id!r}/{engine!r}"
             )
 
-        hosts: list[str] = []
+        citations: list[tuple[str, str | None]] = []
         for citation in answer.get("citations") or []:
+            url = citation.get("url")
             host = citation.get("host")
             if not host:
-                host = canonical_host(citation.get("url"))
+                host = canonical_host(url)
             if host is None:
-                missing_hosts.add(f"<no-host: {citation.get('url')}>")
+                missing_hosts.add(f"<no-host: {url}>")
                 continue
-            hosts.append(host)
+            citations.append((host, url))
             if host not in host_languages:
                 missing_hosts.add(host)
+                continue
+            if host_languages[host] == "mixed" and (
+                url is None or url not in url_languages
+            ):
+                missing_urls.add(url if url is not None else f"<no-url: {host}>")
         pending.append(
-            (label, fact_present, hosts, original_host, answer.get("retrieved"))
+            (
+                label,
+                fact_present,
+                citations,
+                original_host,
+                answer.get("retrieved"),
+            )
         )
 
-    if missing_hosts:
-        print(
-            f"Hosts absent from {args.host_language}; no codes were assigned:",
-            file=sys.stderr,
-        )
-        for host in sorted(missing_hosts):
-            print(f"  {host}", file=sys.stderr)
+    if missing_hosts or missing_urls:
+        if missing_hosts:
+            print(
+                f"Hosts absent from {args.host_language}; "
+                f"no codes were assigned:",
+                file=sys.stderr,
+            )
+            for host in sorted(missing_hosts):
+                print(f"  {host}", file=sys.stderr)
+        if missing_urls:
+            print(
+                f"URLs absent from {args.url_language} for mixed hosts; "
+                f"no codes were assigned:",
+                file=sys.stderr,
+            )
+            for url in sorted(missing_urls):
+                print(f"  {url}", file=sys.stderr)
         return 4
 
     rows: list[dict] = []
-    for label, fact_present, hosts, original_host, retrieved in pending:
+    for label, fact_present, citations, original_host, retrieved in pending:
         code, d_split, en_also_cited = _assign(
             fact_present,
-            hosts,
+            citations,
             original_host,
             host_languages,
+            url_languages,
             aliases,
         )
         original_in_retrieved = _original_in_retrieved(

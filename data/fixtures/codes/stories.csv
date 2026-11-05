@@ -9,3 +9,6 @@ s_e_no,https://original-e.example/scoop,Fixture fact E no
 s_e_wrong,https://original-e-wrong.example/scoop,Fixture fact E wrong
 s_d_other,https://original-d-other.example/scoop,Fixture fact D other
 s_found,https://original-f.example/scoop,Fixture fact found not cited
+s_mixed_es,https://original-mixed-es.example/scoop,Fixture fact mixed es
+s_mixed_en,https://original-mixed-en.example/scoop,Fixture fact mixed en
+s_mixed_missing,https://original-mixed-missing.example/scoop,Fixture fact mixed missing

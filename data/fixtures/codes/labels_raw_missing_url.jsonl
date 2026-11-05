@@ -1,0 +1,1 @@
+{"query_id": "q_mixed_missing", "engine": "gemini", "fact_present": "yes", "raw_output": "yes", "classifier_model": "deepseek-flash", "classifier_fingerprint": "fixture", "prompt_version": "classifier_v1", "usage": {"input_tokens": 100, "output_tokens": 1}, "cost_usd": 3.12e-05, "labeled_at": "2026-11-04T00:00:00Z"}

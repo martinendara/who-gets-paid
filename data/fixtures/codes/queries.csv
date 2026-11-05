@@ -9,3 +9,6 @@ q_e_no,s_e_no,es,direct,Fixture query E with fact no
 q_e_wrong,s_e_wrong,es,direct,Fixture query E with fact wrong
 q_d_other,s_d_other,es,direct,Fixture query D with only other hosts
 q_found,s_found,es,direct,Fixture query found but not cited
+q_mixed_es,s_mixed_es,es,direct,Fixture query with a mixed host URL in Spanish
+q_mixed_en,s_mixed_en,es,direct,Fixture query with a mixed host URL in English
+q_mixed_missing,s_mixed_missing,es,direct,Fixture query with a missing mixed-host URL
