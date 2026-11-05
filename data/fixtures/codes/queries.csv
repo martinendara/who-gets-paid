@@ -12,3 +12,8 @@ q_found,s_found,es,direct,Fixture query found but not cited
 q_mixed_es,s_mixed_es,es,direct,Fixture query with a mixed host URL in Spanish
 q_mixed_en,s_mixed_en,es,direct,Fixture query with a mixed host URL in English
 q_mixed_missing,s_mixed_missing,es,direct,Fixture query with a missing mixed-host URL
+q_url_query,s_url_query,es,direct,Fixture query with URL query string
+q_url_other,s_url_other,es,direct,Fixture query with same host but other note
+q_url_alias,s_url_alias,es,direct,Fixture query with an alternate story URL
+q_url_gemini,s_url_gemini,es,direct,Fixture query with a Gemini citation
+q_url_encoded,s_url_encoded,es,direct,Fixture query with a percent-encoded citation URL

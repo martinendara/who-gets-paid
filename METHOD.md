@@ -85,7 +85,7 @@ Codes A–E are assigned by code, not by the classifier:
 
 D is always reported split into D-none (no citations) and D-other (only unclassifiable hosts, e.g. wikipedia.org returned by Gemini without language subdomain).
 
-If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`). If Spanish-language and English-language hosts are both cited without the original, the code is B and `en_also_cited` is recorded. A cited host absent from `host_language.csv` blocks code assignment; it is never defaulted to `other`. Hosts that publish in more than one language are marked mixed; for them, language is assigned per URL in a hand-built url_language.csv, published with the host table. A cited URL from a mixed host that is absent from url_language.csv blocks code assignment.
+If the original outlet is cited alongside others, the answer is A. If the fact is absent or wrong, the answer is E regardless of citations. Hosts are canonicalized before matching: lowercase, no `www.`, no port (`canonical_host`). If Spanish-language and English-language hosts are both cited without the original, the code is B and `en_also_cited` is recorded. A cited host absent from `host_language.csv` blocks code assignment; it is never defaulted to `other`. Hosts that publish in more than one language are marked mixed; for them, language is assigned per URL in a hand-built url_language.csv, published with the host table. A cited URL from a mixed host that is absent from url_language.csv blocks code assignment. A secondary column, original_url_cited, records whether the exact story URL is among the citations. URLs are normalized (canonical host with aliases, percent-decoded path, no trailing slash, no query string, no fragment) and compared with the story URL and any hand-listed alternate URLs of the same story (original_url_aliases). It does not change codes A–E. It is null for Gemini, whose citation URLs are redirects.
 
 ## 7. Metrics
 
@@ -106,6 +106,8 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - **Breakdowns:** the same ratios with the corresponding denominators, by engine, by country and by question language. Report counts alongside every rate.
 
 **Secondary metric — found but not cited:** the share of answers with `fact_present = yes` whose retrieved sources include the original outlet's host but whose citations do not. Denominator: answers with `fact_present = yes` from engines that expose retrieved sources distinct from citations (Gemini and Perplexity excluded; see §9). Reported per engine.
+
+**Secondary metric — story cited:** answers with `original_url_cited = true` divided by `A + B + C + D`, for engines with non-null `original_url_cited` (Gemini excluded). Reported per engine.
 
 **Costs:** total known cost is the sum of non-null `cost_usd` values. If any record has a null cost, report the number of records with unknown cost and do not present the sum as complete.
 

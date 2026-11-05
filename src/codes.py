@@ -9,7 +9,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from src.hosts import canonical_host
+from src.hosts import canonical_host, normalize_url
 
 DEFAULT_QUERIES = Path("data/private/queries.csv")
 DEFAULT_STORIES = Path("data/private/stories.csv")
@@ -31,6 +31,7 @@ FIELDNAMES = [
     "d_split",
     "en_also_cited",
     "original_in_retrieved",
+    "original_url_cited",
     "human_code",
 ]
 
@@ -190,6 +191,42 @@ def _original_in_retrieved(
     return False
 
 
+def _normalize_for_match(url: str | None, aliases: dict[str, str]) -> str | None:
+    normalized = normalize_url(url)
+    if normalized is None:
+        return None
+    host, slash, path = normalized.partition("/")
+    return aliases.get(host, host) + slash + path
+
+
+def _original_url_cited(
+    engine: str | None,
+    fact_present: str | None,
+    citations: list[tuple[str, str | None]],
+    story_urls: list[str],
+    aliases: dict[str, str],
+) -> bool | None:
+    """Return whether a citation matches the story URL or an alternate URL.
+
+    ``None`` for Gemini (citation URLs are Vertex redirects) and when the
+    classifier returned no label.
+    """
+    if engine == "gemini" or fact_present is None:
+        return None
+    targets = {
+        normalized
+        for normalized in (
+            _normalize_for_match(story_url, aliases) for story_url in story_urls
+        )
+        if normalized is not None
+    }
+    for _, url in citations:
+        normalized = _normalize_for_match(url, aliases)
+        if normalized is not None and normalized in targets:
+            return True
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Assign A-E codes from blind labels and citations."
@@ -237,21 +274,31 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"{args.queries}: duplicate query_id {query_id!r}")
         query_to_story[query_id] = story_id
 
-    story_to_url: dict[str, str] = {}
+    story_to_urls: dict[str, list[str]] = {}
     for row in _read_csv(Path(args.stories), {"story_id", "url"}):
         story_id = (row.get("story_id") or "").strip()
         url = (row.get("url") or "").strip()
         if not story_id or not url:
             raise SystemExit(f"{args.stories}: empty story_id or url")
-        if story_id in story_to_url:
+        if story_id in story_to_urls:
             raise SystemExit(f"{args.stories}: duplicate story_id {story_id!r}")
-        story_to_url[story_id] = url
+        alias_text = (row.get("original_url_aliases") or "").strip()
+        story_to_urls[story_id] = [url] + [
+            part.strip() for part in alias_text.split("|") if part.strip()
+        ]
 
     host_languages, aliases = _read_host_language(Path(args.host_language))
     url_languages = _read_url_language(Path(args.url_language))
 
     pending: list[
-        tuple[dict, str | None, list[tuple[str, str | None]], str, object]
+        tuple[
+            dict,
+            str | None,
+            list[tuple[str, str | None]],
+            str,
+            object,
+            bool | None,
+        ]
     ] = []
     missing_hosts: set[str] = set()
     missing_urls: set[str] = set()
@@ -262,11 +309,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"query_id {query_id!r} is not in {args.queries}"
             )
         story_id = query_to_story[query_id]
-        if story_id not in story_to_url:
+        if story_id not in story_to_urls:
             raise SystemExit(
                 f"story_id {story_id!r} is not in {args.stories}"
             )
-        original_host = canonical_host(story_to_url[story_id])
+        original_host = canonical_host(story_to_urls[story_id][0])
         if not original_host:
             raise SystemExit(
                 f"{args.stories}: invalid URL for story {story_id!r}"
@@ -302,6 +349,13 @@ def main(argv: list[str] | None = None) -> int:
                 url is None or url not in url_languages
             ):
                 missing_urls.add(url if url is not None else f"<no-url: {host}>")
+        original_url_cited = _original_url_cited(
+            engine,
+            fact_present,
+            citations,
+            story_to_urls[story_id],
+            aliases,
+        )
         pending.append(
             (
                 label,
@@ -309,6 +363,7 @@ def main(argv: list[str] | None = None) -> int:
                 citations,
                 original_host,
                 answer.get("retrieved"),
+                original_url_cited,
             )
         )
 
@@ -332,7 +387,14 @@ def main(argv: list[str] | None = None) -> int:
         return 4
 
     rows: list[dict] = []
-    for label, fact_present, citations, original_host, retrieved in pending:
+    for (
+        label,
+        fact_present,
+        citations,
+        original_host,
+        retrieved,
+        original_url_cited,
+    ) in pending:
         code, d_split, en_also_cited = _assign(
             fact_present,
             citations,
@@ -358,6 +420,11 @@ def main(argv: list[str] | None = None) -> int:
                     ""
                     if original_in_retrieved is None
                     else ("true" if original_in_retrieved else "false")
+                ),
+                "original_url_cited": (
+                    ""
+                    if original_url_cited is None
+                    else ("true" if original_url_cited else "false")
                 ),
                 "human_code": "",
             }

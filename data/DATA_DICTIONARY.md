@@ -17,6 +17,7 @@ never committed.
 | `origin_criterion` | enum | `first_published`, `own_investigation`, or `attributed_exclusive` |
 | `origin_evidence` | string | URL or description supporting the origin criterion |
 | `fact_key` | string | The central fact in one sentence |
+| `original_url_aliases` | string | Other URLs of the same story, separated by `|`; only in the private version; may be empty |
 
 ## `data/queries.csv`
 
@@ -64,6 +65,7 @@ One JSON object per line, one line per `(query_id, engine)` pair.
 | `d_split` | enum or empty | `none` or `other` when `code` is `D`; empty otherwise |
 | `en_also_cited` | boolean | `true` when code `B` and an English-language host is also cited; `false` otherwise |
 | `original_in_retrieved` | boolean or empty | `true` when the original outlet's host appears among retrieved sources (alias applied); `false` when retrieved is a list without it; empty when retrieved is null |
+| `original_url_cited` | boolean or empty | `true` when a normalized citation URL matches the story URL or one of its `original_url_aliases` (host aliases applied); `false` otherwise; empty for Gemini or when `fact_present` is empty |
 | `human_code` | enum or empty | Human label for the blind validation sample; empty otherwise |
 
 ## `runs/<run_id>/labels_raw.jsonl`

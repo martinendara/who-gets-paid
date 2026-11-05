@@ -11,3 +11,8 @@
 {"query_id": "q_mixed_es", "engine": "gemini", "citations": [{"url": "https://mixed-es.example/nota", "title": "mixed es", "host": "mixed-es.example"}], "error": null}
 {"query_id": "q_mixed_en", "engine": "gemini", "citations": [{"url": "https://mixed-en.example/story", "title": "mixed en", "host": "mixed-en.example"}], "error": null}
 {"query_id": "q_mixed_missing", "engine": "gemini", "citations": [{"url": "https://mixed-missing.example/unknown", "title": "mixed missing", "host": "mixed-missing.example"}], "error": null}
+{"query_id": "q_url_query", "engine": "openai", "citations": [{"url": "https://original-u.example/nota/?utm_source=x", "title": "query", "host": "original-u.example"}], "error": null}
+{"query_id": "q_url_other", "engine": "openai", "citations": [{"url": "https://original-v.example/otra-nota", "title": "other note", "host": "original-v.example"}], "error": null}
+{"query_id": "q_url_alias", "engine": "openai", "citations": [{"url": "https://www.original-w.example/nota-alias/", "title": "alias", "host": "original-w.example"}], "error": null}
+{"query_id": "q_url_gemini", "engine": "gemini", "citations": [{"url": "https://original-g.example/nota", "title": "gemini", "host": "original-g.example"}], "error": null}
+{"query_id": "q_url_encoded", "engine": "openai", "citations": [{"url": "https://original-enc.example/nota/%C3%B3", "title": "encoded", "host": "original-enc.example"}], "error": null}

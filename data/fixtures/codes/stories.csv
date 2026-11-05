@@ -1,14 +1,19 @@
-story_id,url,fact_key
-s_a,https://original-a.example/scoop,Fixture fact A
-s_b,https://original-b.example/scoop,Fixture fact B
-s_b_en,https://original-b-en.example/scoop,Fixture fact B with an English host
-s_c,https://original-c.example/scoop,Fixture fact C
-s_d,https://original-d.example/scoop,Fixture fact D
-s_missing,https://original-m.example/scoop,Fixture fact with an unknown host
-s_e_no,https://original-e.example/scoop,Fixture fact E no
-s_e_wrong,https://original-e-wrong.example/scoop,Fixture fact E wrong
-s_d_other,https://original-d-other.example/scoop,Fixture fact D other
-s_found,https://original-f.example/scoop,Fixture fact found not cited
-s_mixed_es,https://original-mixed-es.example/scoop,Fixture fact mixed es
-s_mixed_en,https://original-mixed-en.example/scoop,Fixture fact mixed en
-s_mixed_missing,https://original-mixed-missing.example/scoop,Fixture fact mixed missing
+story_id,url,fact_key,original_url_aliases
+s_a,https://original-a.example/scoop,Fixture fact A,
+s_b,https://original-b.example/scoop,Fixture fact B,
+s_b_en,https://original-b-en.example/scoop,Fixture fact B with an English host,
+s_c,https://original-c.example/scoop,Fixture fact C,
+s_d,https://original-d.example/scoop,Fixture fact D,
+s_missing,https://original-m.example/scoop,Fixture fact with an unknown host,
+s_e_no,https://original-e.example/scoop,Fixture fact E no,
+s_e_wrong,https://original-e-wrong.example/scoop,Fixture fact E wrong,
+s_d_other,https://original-d-other.example/scoop,Fixture fact D other,
+s_found,https://original-f.example/scoop,Fixture fact found not cited,
+s_mixed_es,https://original-mixed-es.example/scoop,Fixture fact mixed es,
+s_mixed_en,https://original-mixed-en.example/scoop,Fixture fact mixed en,
+s_mixed_missing,https://original-mixed-missing.example/scoop,Fixture fact mixed missing,
+s_url_query,https://original-u.example/nota,Fixture fact URL with query,
+s_url_other,https://original-v.example/nota,Fixture fact same host other note,
+s_url_alias,https://original-w.example/nota,Fixture fact URL alias,https://www.original-w.example/nota-alias|https://original-w.example/otra-alias
+s_url_gemini,https://original-g.example/nota,Fixture fact Gemini URL,
+s_url_encoded,https://original-enc.example/nota/ó,Fixture fact percent-encoded URL,
