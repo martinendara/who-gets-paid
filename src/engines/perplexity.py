@@ -32,6 +32,7 @@ _CITE_SEP = "\ue202"
 _PUA_BLOCK = re.compile(_CITE_START + "(.*?)" + _CITE_END, re.S)
 _TURN_MARKER = re.compile(r"turn(\d+)search(\d+)\Z")
 _BRACKET_MARKER = re.compile(r"\[web:(\d+)\]|\[(\d+)\]")
+_WRITTEN_URL = re.compile(r"https?://[^\s<>\"\)\]]+")
 
 
 def _error_record(message: str) -> dict:
@@ -47,6 +48,7 @@ def _error_record(message: str) -> dict:
         "error": message,
         "unresolved_markers": None,
         "search_queries": None,
+        "inline_cited": None,
         "api_cost_usd": None,
     }
 
@@ -91,6 +93,34 @@ def _as_float(value) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     return float(value)
+
+
+def _source(url: str | None, title: str | None = None) -> dict:
+    return {"url": url, "title": title, "host": canonical_host(url)}
+
+
+def _dedupe_by_url(items: list[dict]) -> list[dict]:
+    """Keep the first item for each URL, preserving order."""
+    seen: set[str] = set()
+    out: list[dict] = []
+    for item in items:
+        url = item.get("url")
+        key = "" if url is None else str(url)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+    return out
+
+
+def _written_urls(text: str) -> list[dict]:
+    """Return the URLs written verbatim in the answer text."""
+    out: list[dict] = []
+    for match in _WRITTEN_URL.finditer(text):
+        url = match.group(0).rstrip(".,;:!?")
+        if url:
+            out.append(_source(url))
+    return out
 
 
 def _markers(text: str) -> list[tuple[str | None, int | None]]:
@@ -187,6 +217,7 @@ def _record_from_data(data: dict) -> dict:
     answer_parts: list[str] = []
     search_items: list[dict] = []
     retrieved: list[dict] = []
+    result_sources: list[dict] = []
     for item in output:
         item_type = item.get("type")
         if item_type == "message":
@@ -207,6 +238,7 @@ def _record_from_data(data: dict) -> dict:
                         "host": canonical_host(url),
                     }
                 )
+                result_sources.append(_source(url, result.get("title")))
 
     error = data.get("error")
     if error:
@@ -217,7 +249,14 @@ def _record_from_data(data: dict) -> dict:
     if status is not None and status != "completed" and not answer_text:
         return _error_record(f"Perplexity response status: {status}")
 
-    citations, unresolved = _resolve_markers(_markers(answer_text), search_items)
+    # D41 (rama B): the API returns the sources it searched but does not mark
+    # which ones support the answer. Citations are the full source list; inline
+    # references are kept separately as a sensitivity check (never used in codes).
+    marker_citations, unresolved = _resolve_markers(
+        _markers(answer_text), search_items
+    )
+    inline_cited = _dedupe_by_url(marker_citations + _written_urls(answer_text))
+    citations = _dedupe_by_url(result_sources)
     search_queries = sum(len(item.get("queries") or []) for item in search_items)
 
     usage = data.get("usage") or {}
@@ -244,6 +283,7 @@ def _record_from_data(data: dict) -> dict:
         "error": None,
         "unresolved_markers": unresolved,
         "search_queries": search_queries,
+        "inline_cited": inline_cited,
         "api_cost_usd": api_cost_usd,
     }
 

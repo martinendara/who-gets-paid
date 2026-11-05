@@ -105,7 +105,7 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
   Denominator: answers with the fact present and correct in each language. If either language denominator is 0, the gap is `null`.
 - **Breakdowns:** the same ratios with the corresponding denominators, by engine, by country and by question language. Report counts alongside every rate.
 
-**Secondary metric — found but not cited:** the share of answers with `fact_present = yes` whose retrieved sources include the original outlet's host but whose citations do not. Denominator: answers with `fact_present = yes` from engines that expose retrieved sources (Gemini excluded). Reported per engine.
+**Secondary metric — found but not cited:** the share of answers with `fact_present = yes` whose retrieved sources include the original outlet's host but whose citations do not. Denominator: answers with `fact_present = yes` from engines that expose retrieved sources distinct from citations (Gemini and Perplexity excluded; see §9). Reported per engine.
 
 **Costs:** total known cost is the sum of non-null `cost_usd` values. If any record has a null cost, report the number of records with unknown cost and do not present the sum as complete.
 
@@ -123,7 +123,7 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - The sample is purposive and small (10 outlets, 40 stories, 4 queries per story); results are descriptive and not generalizable to all Spanish-language media.
 - Engines are proprietary and change over time. Each record stores `run_at` and `model_version`; a later run is a new observation, not a replication of the same engine state.
 - Search results vary with location, time, and personalization. The runner does not control search location beyond API defaults.
-- Perplexity citations are reconstructed from inline markers that point to search results; markers that do not resolve are counted (`unresolved_markers`) and reported.
+- Perplexity's Agent API returns the sources it searched (`search_results`) but does not mark which sources support the answer when the question is sent without instructions; its documentation states that inline markers are prompt-dependent. The pilot treats Perplexity's full source list as its citations, as the consumer product displays a source list with each answer. This likely raises Perplexity's original-attribution rate relative to engines that cite selectively, and is reported as such. Sources referenced inline (markers or URLs written in the text) are recorded as `inline_cited` and reported as a sensitivity check. The found-but-not-cited metric is not reported for Perplexity, because its citations and retrieved sources coincide. Perplexity does not document how many sources its consumer product shows, nor the API's default result budget (max_results was not set). The API returned 15 sources per answer; the consumer product showed 10 in one manual check. The API and the consumer product are separate systems, and the pilot audits the API. The list is not capped.
 - Citation presence is not the same as legal attribution, licensing, or payment. The pilot measures what the engine displays, not the underlying commercial arrangement.
 - The classifier is an LLM; human validation covers only 20% of answers. Human coding itself may be error-prone.
 - Host language is assigned manually in `host_language.csv`; bilingual or regional hosts may be misclassified.

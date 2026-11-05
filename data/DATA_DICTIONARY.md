@@ -40,11 +40,12 @@ One JSON object per line, one line per `(query_id, engine)` pair.
 | `model_version` | string or null | Version reported by the API |
 | `run_at` | string | ISO 8601 UTC timestamp |
 | `answer_text` | string or null | Answer text shown by the engine |
-| `citations` | array or null | Sources the engine cites: `{url, title, host}` |
+| `citations` | array or null | Sources the engine cites: `{url, title, host}`. For Perplexity, the full `search_results` source list (METHOD §9) |
 | `retrieved` | array or null | Sources searched but not necessarily cited; `null` when the engine does not expose them |
 | `search_count` | integer or null | Number of searches performed |
 | `search_queries` | integer or null | Perplexity only: number of subqueries in `search_results` items |
 | `unresolved_markers` | integer or null | Perplexity only: inline citation markers that did not resolve to a search result |
+| `inline_cited` | array or null | Perplexity only: sources referenced inline—citation markers resolved to search results plus URLs written in the answer text—as `{url, title, host}`, deduplicated by URL. Not used for codes. `null` for other engines |
 | `api_cost_usd` | number or null | Perplexity only: provider-reported `usage.cost.total_cost` |
 | `usage` | object or null | `{input_tokens, output_tokens}` |
 | `cost_usd` | number or null | Estimated cost; `null` when a price or usage datum is missing |
