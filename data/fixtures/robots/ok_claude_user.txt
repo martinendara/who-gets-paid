@@ -1,0 +1,11 @@
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Claude-User
+Disallow: /
+
+User-agent: OAI-SearchBot
+Allow: /

@@ -2,3 +2,4 @@ google-genai==2.34.0
 anthropic==2.4.0
 openai==3.45.0
 perplexityai==0.46.1
+pytest==9.2.0
