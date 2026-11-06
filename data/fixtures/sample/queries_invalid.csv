@@ -1,0 +1,11 @@
+query_id,story_id,lang,type,text
+S01-es-d,S01,es,direct,Q1
+S01-es-d,S01,es,direct,Q2
+S02-xx-d,S02,fr,direct,Q3
+S03-es-d,S02,es,direct,Q4
+S04-es-d,T-99,es,direct,Q5
+S05-es-d,S05,es,open,Q6
+S06-es-d,S06,es,direct,
+S07-es-d,S07,es,direct,PENDING
+S08-es-d,S08,es,direct,Q9
+S08-en-d,S08,en,direct,Q9

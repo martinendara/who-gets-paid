@@ -11,14 +11,16 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
 DEFAULT_STORIES = Path("data/private/stories.csv")
 DEFAULT_OUTLETS = Path("data/private/outlets.csv")
 DEFAULT_EXCEPTIONS = Path("data/private/sample_exceptions.csv")
+DEFAULT_QUERIES = Path("data/private/queries.csv")
 WINDOW_START = date(2025, 11, 16)
 WINDOW_END = date(2026, 8, 16)
 ORIGIN_CRITERIA = {
@@ -40,6 +42,17 @@ REQUIRED_STORY_COLUMNS = {
     "fact_key",
     "english_replica_url",
 }
+QUERY_COLUMNS = ["query_id", "story_id", "lang", "type", "text"]
+QUERY_LANGS = {"es", "en"}
+QUERY_TYPES = {"direct", "open"}
+EXPECTED_KIND = {"direct": "d", "open": "o"}
+QUERY_COMBOS = (
+    ("es", "direct"),
+    ("es", "open"),
+    ("en", "direct"),
+    ("en", "open"),
+)
+QUERY_ID_RE = re.compile(r"^(?P<story>[^-]+)-(?P<lang>es|en)-(?P<kind>[do])$")
 EXIT_PROBLEMS = 4
 
 
@@ -73,10 +86,16 @@ def _load(path: Path, required: set[str]) -> tuple[list[dict], list[str]]:
         return list(reader), problems
 
 
+def _header(path: Path) -> list[str] | None:
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        return next(csv.reader(handle), None)
+
+
 def validate(
     stories_path: Path = DEFAULT_STORIES,
     outlets_path: Path = DEFAULT_OUTLETS,
     exceptions_path: Path = DEFAULT_EXCEPTIONS,
+    queries_path: Path = DEFAULT_QUERIES,
 ) -> tuple[list[str], list[str]]:
     """Return ``(problems, warnings)`` for the private sample sheet."""
     problems: list[str] = []
@@ -107,9 +126,7 @@ def validate(
     stories, story_problems = _load(stories_path, REQUIRED_STORY_COLUMNS)
     problems.extend(story_problems)
     if stories and "saga" not in stories[0].keys():
-        warnings.append(
-            f"{stories_path}: saga column absent; saga check skipped"
-        )
+        problems.append(f"{stories_path}: saga column absent")
 
     seen_ids: set[str] = set()
     counts: Counter[str] = Counter()
@@ -189,6 +206,100 @@ def validate(
                 f"{exceptions_path}"
             )
 
+    queries, query_problems = _load(queries_path, set(QUERY_COLUMNS))
+    problems.extend(query_problems)
+    if queries_path.exists():
+        header = _header(queries_path)
+        if header != QUERY_COLUMNS:
+            got = ",".join(header or [])
+            problems.append(
+                f"{queries_path}: header must be "
+                f"{','.join(QUERY_COLUMNS)}, got {got}"
+            )
+
+    query_ids: set[str] = set()
+    text_to_ids: dict[str, list[str]] = defaultdict(list)
+    combos: Counter[tuple[str, str, str]] = Counter()
+
+    for line_no, row in enumerate(queries, start=2):
+        label = f"{queries_path}:{line_no}"
+        query_id = (row.get("query_id") or "").strip()
+        story_id = (row.get("story_id") or "").strip()
+        lang = (row.get("lang") or "").strip()
+        qtype = (row.get("type") or "").strip()
+        text = (row.get("text") or "").strip()
+        match = QUERY_ID_RE.match(query_id) if query_id else None
+
+        if not query_id:
+            problems.append(f"{label}: empty query_id")
+        elif query_id in query_ids:
+            problems.append(f"{label}: duplicate query_id {query_id!r}")
+        else:
+            query_ids.add(query_id)
+            if match is None:
+                problems.append(
+                    f"{label}: query_id {query_id!r} does not match "
+                    "<story_id>-<es|en>-<d|o>"
+                )
+            elif match.group("story") != story_id:
+                problems.append(
+                    f"{label}: story_id {story_id!r} does not match "
+                    f"query_id {query_id!r}"
+                )
+
+        if not story_id:
+            problems.append(f"{label}: empty story_id")
+        elif story_id not in seen_ids:
+            problems.append(
+                f"{label}: story_id {story_id!r} is not in {stories_path}"
+            )
+
+        if lang not in QUERY_LANGS:
+            problems.append(
+                f"{label}: lang {lang!r} is not in {sorted(QUERY_LANGS)}"
+            )
+        elif match is not None and match.group("lang") != lang:
+            problems.append(
+                f"{label}: lang {lang!r} does not match query_id {query_id!r}"
+            )
+
+        if qtype not in QUERY_TYPES:
+            problems.append(
+                f"{label}: type {qtype!r} is not in {sorted(QUERY_TYPES)}"
+            )
+        elif match is not None and EXPECTED_KIND[qtype] != match.group("kind"):
+            problems.append(
+                f"{label}: type {qtype!r} does not match query_id {query_id!r}"
+            )
+
+        if not text:
+            problems.append(f"{label}: empty text")
+        elif text == PENDING:
+            problems.append(f"{label}: text is PENDING")
+        else:
+            text_to_ids[text].append(query_id or label)
+
+        if story_id and lang in QUERY_LANGS and qtype in QUERY_TYPES:
+            combos[(story_id, lang, qtype)] += 1
+
+    for ids in text_to_ids.values():
+        if len(ids) > 1:
+            problems.append(
+                f"{queries_path}: repeated query text in {', '.join(ids)}"
+            )
+
+    for story_id in sorted(seen_ids):
+        for lang, qtype in QUERY_COMBOS:
+            expected_id = f"{story_id}-{lang}-{EXPECTED_KIND[qtype]}"
+            count = combos.get((story_id, lang, qtype), 0)
+            if count == 0:
+                problems.append(f"{queries_path}: missing query {expected_id}")
+            elif count > 1:
+                problems.append(
+                    f"{queries_path}: duplicate query {expected_id} "
+                    f"({count} rows)"
+                )
+
     return problems, warnings
 
 
@@ -199,10 +310,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stories", default=str(DEFAULT_STORIES))
     parser.add_argument("--outlets", default=str(DEFAULT_OUTLETS))
     parser.add_argument("--exceptions", default=str(DEFAULT_EXCEPTIONS))
+    parser.add_argument("--queries", default=str(DEFAULT_QUERIES))
     args = parser.parse_args(argv)
 
     problems, warnings = validate(
-        Path(args.stories), Path(args.outlets), Path(args.exceptions)
+        Path(args.stories),
+        Path(args.outlets),
+        Path(args.exceptions),
+        Path(args.queries),
     )
     for warning in warnings:
         print(f"WARNING: {warning}", file=sys.stderr)
