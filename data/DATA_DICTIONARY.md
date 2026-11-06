@@ -113,7 +113,9 @@ One row per story, written by `src.access_check` on the day of the run (D49, D56
 | `robots_sha256` | string or empty | SHA-256 of the raw `robots.txt` body; empty when no response was obtained |
 | `robots_error` | string | Network error message when `robots.txt` did not respond; empty when a response was received |
 | `allow_<agent>` | boolean | Whether `robots.txt` allows the agent for the story URL, as `true`/`false`; `false` when `robots_status` is `unreachable`. Eight columns: `allow_googlebot`, `allow_google_extended`, `allow_oai_searchbot`, `allow_chatgpt_user`, `allow_claude_searchbot`, `allow_claude_user`, `allow_perplexitybot`, `allow_perplexity_user` |
-| `engine_<engine>` | enum | `closed` when any of the engine's agents is disallowed for the story; `open` otherwise. Four columns: `engine_gemini`, `engine_openai`, `engine_claude`, `engine_perplexity` |
+| `engine_gemini` | enum | `closed` when Googlebot is disallowed for the story; `open` otherwise. Google-Extended does not affect this column (D64) |
+| `engine_gemini_with_extended` | enum | Sensitivity variant: `closed` when Googlebot or Google-Extended is disallowed for the story; `open` otherwise |
+| `engine_openai`, `engine_claude`, `engine_perplexity` | enum | `closed` when any of the engine's agents is disallowed for the story; `open` otherwise |
 | `page_http_status` | integer or empty | HTTP status of one GET to the story URL with the declared generic user agent; empty when no response was obtained |
 | `page_final_url` | string or empty | URL after redirects; empty when no response was obtained |
 | `page_error` | string | Network error message when the story URL did not respond; empty when a response was received |

@@ -22,15 +22,20 @@ source .venv/bin/activate
 pip install -r requirements.txt
 set -a && source .env && set +a
 echo ${#GEMINI_API_KEY} ${#ANTHROPIC_API_KEY}   # lengths only
-python -m src.run --file data/smoke.csv --engines gemini,claude --run-id smoke
+python -m src.run --file data/smoke.csv --engines gemini,claude --run-id cut-smoke
 ```
+
+Runs whose id does not start with `cut-` require a complete sample sheet
+(`python -m src.validate_sample`).
 
 If TLS fails with certificate errors (Python without a CA bundle), run
 with `SSL_CERT_FILE=/etc/ssl/cert.pem` or the path your system uses.
+
 Output: `runs/<run_id>/answers.jsonl` (gitignored). Engines: Gemini
 `gemini-3.5-flash-lite` with Google Search via `generateContent`; Claude
-`claude-sonnet-5-5` with `web_search_20250305`. OpenAI and Perplexity are
-planned for IMPL-02.
+`claude-haiku-5-5` with `web_search_20250305`; OpenAI `gpt-6-luna` with
+`web_search` via the Responses API; Perplexity `perplexity/sonar` via the
+Agent API.
 
 ## Limitations
 Small, non-probabilistic sample: descriptive, not causal. Search results and
