@@ -8,16 +8,28 @@ never committed.
 
 | Column | Type | Description |
 |---|---|---|
-| `story_id` | string | `S01` … `S40` |
+| `story_id` | string | `S01` … `S29` |
 | `outlet_id` | string | Anonymized outlet identifier (`AR-01` … `AR-05`, `CL-01` … `CL-05`) |
 | `country` | enum | `AR` or `CL` |
 | `url` | string | Original story URL; only in the private version |
-| `english_replica_url` | string | URL of an English-language replication that names the original outlet; empty when none was found; only in the private version |
-| `published_at` | string | ISO 8601 timestamp with timezone |
+| `english_replica_url` | string | URL of an English-language replication that names the original outlet; empty when it was searched and none was found; `PENDING` when it has not been searched yet (D57); only in the private version |
+| `published_at` | string | ISO 8601 timestamp with timezone, or a date-only `YYYY-MM-DD` when the source does not provide a time (D61); `PENDING` when not yet determined |
 | `origin_criterion` | enum | `attributed_exclusive` — another outlet, in any language, credits the outlet with the story; `own_investigation` — the story rests on the outlet's own documents, records or information requests; `first_published` — the outlet labels it exclusive and no earlier publication of the fact exists |
-| `origin_evidence` | string | URL or description supporting the origin criterion |
-| `fact_key` | string | The central fact in one sentence |
+| `origin_evidence` | string | URL or description supporting the origin criterion; stories that rest on public data are marked `public data` (D50) |
+| `fact_key` | string | The central fact in one sentence; `PENDING` until it is written |
 | `original_url_aliases` | string | Other URLs of the same story, separated by `|`; only in the private version; may be empty |
+
+## `data/private/outlets.csv`
+
+The ten outlets in the sample (five Argentina, five Chile). Private: real names and hosts are never committed.
+
+| Column | Type | Description |
+|---|---|---|
+| `outlet_id` | string | Anonymized outlet identifier (`AR-01` … `AR-05`, `CL-01` … `CL-05`) |
+| `name` | string | Outlet name; only in the private version |
+| `country` | enum | `AR` or `CL` |
+| `hosts` | string | One or more canonical hosts for the outlet, separated by `;` |
+| `rank_source` | string | Source used to rank the outlet, plus any note on its replacement (D53) |
 
 ## `data/queries.csv`
 
@@ -85,6 +97,25 @@ One JSON object per line, one line per `(query_id, engine)` pair, written by
 | `usage` | object or null | `{input_tokens, output_tokens}` summed over attempts |
 | `cost_usd` | number or null | Upper-bound cost at DeepSeek peak rates without cache discounts |
 | `labeled_at` | string | ISO 8601 UTC timestamp |
+
+## `data/private/access_<run_id>.csv`
+
+One row per story, written by `src.access_check` on the day of the run (D49, D56). The raw `robots.txt` fetched for each host is stored under `data/private/access/<run_id>/<host>_robots.txt`.
+
+| Column | Type | Description |
+|---|---|---|
+| `run_id` | string | Run identifier the access check was made for |
+| `checked_at` | string | ISO 8601 timestamp with timezone |
+| `outlet_id` | string | Foreign key to `outlets.csv` |
+| `story_id` | string | Foreign key to `stories.csv` |
+| `robots_http_status` | integer or `PENDING` | Final HTTP status of `robots.txt`; `PENDING` when unreachable |
+| `robots_status` | enum | `ok` (2xx, parsed per RFC 9309), `unavailable` (4xx, no restrictions), `unreachable` (5xx or no response, full disallow) |
+| `robots_sha256` | string or `PENDING` | SHA-256 of the raw `robots.txt` body; `PENDING` when unreachable |
+| `allow_<agent>` | boolean or `PENDING` | Whether `robots.txt` allows the agent for the story URL, as `true`/`false`. Eight columns: `allow_googlebot`, `allow_google_extended`, `allow_oai_searchbot`, `allow_chatgpt_user`, `allow_claude_searchbot`, `allow_claude_user`, `allow_perplexitybot`, `allow_perplexity_user` |
+| `engine_<engine>` | enum | `closed` when any of the engine's agents is disallowed for the story; `open` otherwise. Four columns: `engine_gemini`, `engine_openai`, `engine_claude`, `engine_perplexity` |
+| `page_http_status` | integer or `PENDING` | HTTP status of one GET to the story URL with the declared generic user agent; `PENDING` when unreachable |
+| `page_final_url` | string or `PENDING` | URL after redirects; `PENDING` when unreachable |
+| `page_error` | string | Network error message; empty when the request completed |
 
 ## `data/host_language.csv`
 
