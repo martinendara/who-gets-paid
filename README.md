@@ -24,6 +24,9 @@ set -a && source .env && set +a
 echo ${#GEMINI_API_KEY} ${#ANTHROPIC_API_KEY}   # lengths only
 python -m src.run --file data/smoke.csv --engines gemini,claude --run-id smoke
 ```
+
+If TLS fails with certificate errors (Python without a CA bundle), run
+with `SSL_CERT_FILE=/etc/ssl/cert.pem` or the path your system uses.
 Output: `runs/<run_id>/answers.jsonl` (gitignored). Engines: Gemini
 `gemini-3.5-flash-lite` with Google Search via `generateContent`; Claude
 `claude-sonnet-5-5` with `web_search_20250305`. OpenAI and Perplexity are

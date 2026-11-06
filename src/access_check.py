@@ -17,9 +17,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
-
-from src.hosts import canonical_host
 
 USER_AGENT = (
     "who-gets-paid-access-check/0.1 "
@@ -27,7 +26,6 @@ USER_AGENT = (
 )
 TIMEOUT_SECONDS = 20
 ROBOTS_RETRIES = 1
-PENDING = "PENDING"
 DEFAULT_OUTLETS = Path("data/private/outlets.csv")
 DEFAULT_STORIES = Path("data/private/stories.csv")
 DEFAULT_OUT_DIR = Path("data/private")
@@ -52,6 +50,7 @@ FIELDNAMES = (
         "robots_http_status",
         "robots_status",
         "robots_sha256",
+        "robots_error",
     ]
     + [f"allow_{slug}" for slug, _agent, _engine in AGENTS]
     + [f"engine_{engine}" for engine in ENGINES]
@@ -201,25 +200,30 @@ def main(argv: list[str] | None = None) -> int:
                 f"{args.stories}: outlet_id {outlet_id!r} is not in "
                 f"{args.outlets}"
             )
-        host = canonical_host(url)
+        host = urlparse(url).hostname
         if not host:
             raise SystemExit(f"{args.stories}: invalid URL for story {story_id!r}")
 
         if host not in host_cache:
-            status, _final, body, _error = fetch(
+            status, _final, body, error = fetch(
                 f"https://{host}/robots.txt", retries=ROBOTS_RETRIES
             )
             if status is None:
                 policy = robots_policy(None, "")
-                sha = PENDING
+                sha = ""
+                robots_error = error or "request failed"
+                http_status: int | str = ""
             else:
                 text = body.decode("utf-8", errors="replace")
                 policy = robots_policy(status, text)
                 sha = _write_robots(robots_dir, host, body)
+                robots_error = ""
+                http_status = status
             host_cache[host] = {
-                "http_status": status if status is not None else PENDING,
+                "http_status": http_status,
                 "status": robots_status_name(status),
                 "sha": sha,
+                "robots_error": robots_error,
                 "policy": policy,
             }
         robots = host_cache[host]
@@ -234,10 +238,11 @@ def main(argv: list[str] | None = None) -> int:
             "robots_http_status": robots["http_status"],
             "robots_status": robots["status"],
             "robots_sha256": robots["sha"],
+            "robots_error": robots["robots_error"],
             "page_http_status": (
-                page_status if page_status is not None else PENDING
+                page_status if page_status is not None else ""
             ),
-            "page_final_url": page_final if page_final is not None else PENDING,
+            "page_final_url": page_final if page_final is not None else "",
             "page_error": page_error or "",
         }
         for slug, _agent, _engine in AGENTS:

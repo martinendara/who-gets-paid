@@ -108,14 +108,15 @@ One row per story, written by `src.access_check` on the day of the run (D49, D56
 | `checked_at` | string | ISO 8601 timestamp with timezone |
 | `outlet_id` | string | Foreign key to `outlets.csv` |
 | `story_id` | string | Foreign key to `stories.csv` |
-| `robots_http_status` | integer or `PENDING` | Final HTTP status of `robots.txt`; `PENDING` when unreachable |
+| `robots_http_status` | integer or empty | Final HTTP status of `robots.txt`; empty when no response was obtained |
 | `robots_status` | enum | `ok` (2xx, parsed per RFC 9309), `unavailable` (4xx, no restrictions), `unreachable` (5xx or no response, full disallow) |
-| `robots_sha256` | string or `PENDING` | SHA-256 of the raw `robots.txt` body; `PENDING` when unreachable |
-| `allow_<agent>` | boolean or `PENDING` | Whether `robots.txt` allows the agent for the story URL, as `true`/`false`. Eight columns: `allow_googlebot`, `allow_google_extended`, `allow_oai_searchbot`, `allow_chatgpt_user`, `allow_claude_searchbot`, `allow_claude_user`, `allow_perplexitybot`, `allow_perplexity_user` |
+| `robots_sha256` | string or empty | SHA-256 of the raw `robots.txt` body; empty when no response was obtained |
+| `robots_error` | string | Network error message when `robots.txt` did not respond; empty when a response was received |
+| `allow_<agent>` | boolean | Whether `robots.txt` allows the agent for the story URL, as `true`/`false`; `false` when `robots_status` is `unreachable`. Eight columns: `allow_googlebot`, `allow_google_extended`, `allow_oai_searchbot`, `allow_chatgpt_user`, `allow_claude_searchbot`, `allow_claude_user`, `allow_perplexitybot`, `allow_perplexity_user` |
 | `engine_<engine>` | enum | `closed` when any of the engine's agents is disallowed for the story; `open` otherwise. Four columns: `engine_gemini`, `engine_openai`, `engine_claude`, `engine_perplexity` |
-| `page_http_status` | integer or `PENDING` | HTTP status of one GET to the story URL with the declared generic user agent; `PENDING` when unreachable |
-| `page_final_url` | string or `PENDING` | URL after redirects; `PENDING` when unreachable |
-| `page_error` | string | Network error message; empty when the request completed |
+| `page_http_status` | integer or empty | HTTP status of one GET to the story URL with the declared generic user agent; empty when no response was obtained |
+| `page_final_url` | string or empty | URL after redirects; empty when no response was obtained |
+| `page_error` | string | Network error message when the story URL did not respond; empty when a response was received |
 
 ## `data/host_language.csv`
 
