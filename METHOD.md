@@ -14,12 +14,10 @@ The hypothesis is directional but does not fix a magnitude. The pilot reports de
 
 ## 3. Sampling frame
 
-- **Outlets:** the five most-used Spanish-language written or digital-first news brands in Argentina and the five in Chile (broadcast-led brands excluded), listed in `data/private/outlets.csv` with the source used to rank them.
-- **Stories:** each story is a scoop that originated in the outlet in its home country and was later reproduced by at least one English-language outlet. The English replica's URL is recorded (`english_replica_url`, private). Because every story has an English replica by design, English-source displacement (C) is measured conditional on an English alternative existing; the pilot does not estimate how often such replicas exist. The sample is 40 stories, four per outlet, and each story's central fact is stated in `fact_key`.
-- **Origin criteria:** a story enters the sample only if it meets at least one of:
-  - `first_published`: the outlet published the fact before other outlets;
-  - `own_investigation`: the outlet produced the investigation or original reporting;
-  - `attributed_exclusive`: the story is explicitly presented as an exclusive, with attribution.
+- **Outlets:** in Argentina, the four most-used Spanish-language written or digital-first national news brands plus one leading regional daily; in Chile, the five most-used Spanish-language written or digital-first news brands (broadcast-led brands excluded). They are listed in `data/private/outlets.csv` with the source used to rank them.
+- **Stories:** each story is a scoop that originated in the outlet in its home country. Origin is established by at least one of: another outlet, in any language, credits the outlet with the story; the story rests on the outlet's own investigation (documents, records, information requests); or the outlet labels it exclusive and no earlier publication exists. Whether an English-language outlet later replicated the story, naming the original outlet, is recorded (`english_replica_url`, private; empty when none was found) and is an observed variable, not an inclusion criterion. Displacement to English-language sources (C) is therefore measured unconditionally, and results are also reported split by stories with and without an English replica. At most two stories per outlet come from the same ongoing news saga.
+- The sample is 40 stories, four per outlet; each story's central fact is stated in `fact_key`.
+- **Origin criteria** (`origin_criterion`, at least one per story, recorded with evidence in `origin_evidence`): `attributed_exclusive` — another outlet, in any language, credits the outlet with the story; `own_investigation` — the story rests on the outlet's own documents, records or information requests; `first_published` — the outlet labels it exclusive and no earlier publication of the fact exists.
 - **Origin evidence:** each story records a URL or a description supporting the criterion in `origin_evidence` (private version keeps the URL).
 - **Selection:** the sample is purposive, not probabilistic. It is fixed in `stories.csv` before the first real query. No story is added or removed after seeing model outputs.
 - **Private/public split:** `data/private/` holds URLs and real outlet names and is never committed. The public `data/stories.csv` is anonymized.

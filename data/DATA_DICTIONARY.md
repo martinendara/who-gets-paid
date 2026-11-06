@@ -12,9 +12,9 @@ never committed.
 | `outlet_id` | string | Anonymized outlet identifier (`AR-01` … `AR-05`, `CL-01` … `CL-05`) |
 | `country` | enum | `AR` or `CL` |
 | `url` | string | Original story URL; only in the private version |
-| `english_replica_url` | string | English-language replica URL; only in the private version |
+| `english_replica_url` | string | URL of an English-language replication that names the original outlet; empty when none was found; only in the private version |
 | `published_at` | string | ISO 8601 timestamp with timezone |
-| `origin_criterion` | enum | `first_published`, `own_investigation`, or `attributed_exclusive` |
+| `origin_criterion` | enum | `attributed_exclusive` — another outlet, in any language, credits the outlet with the story; `own_investigation` — the story rests on the outlet's own documents, records or information requests; `first_published` — the outlet labels it exclusive and no earlier publication of the fact exists |
 | `origin_evidence` | string | URL or description supporting the origin criterion |
 | `fact_key` | string | The central fact in one sentence |
 | `original_url_aliases` | string | Other URLs of the same story, separated by `|`; only in the private version; may be empty |
