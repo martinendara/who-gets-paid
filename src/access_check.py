@@ -41,6 +41,7 @@ AGENTS = (
     ("perplexity_user", "Perplexity-User", "perplexity"),
 )
 ENGINES = ("gemini", "openai", "claude", "perplexity")
+ENGINE_COLUMNS = ("gemini", "gemini_with_extended", "openai", "claude", "perplexity")
 FIELDNAMES = (
     [
         "run_id",
@@ -53,7 +54,7 @@ FIELDNAMES = (
         "robots_error",
     ]
     + [f"allow_{slug}" for slug, _agent, _engine in AGENTS]
-    + [f"engine_{engine}" for engine in ENGINES]
+    + [f"engine_{engine}" for engine in ENGINE_COLUMNS]
     + ["page_http_status", "page_final_url", "page_error"]
 )
 
@@ -103,7 +104,13 @@ def assess_agents(policy, url: str) -> tuple[dict[str, bool], dict[str, str]]:
         for slug, agent, _engine in AGENTS
     }
     engines: dict[str, str] = {}
-    for engine in ENGINES:
+    engines["gemini"] = "open" if allows["googlebot"] else "closed"
+    engines["gemini_with_extended"] = (
+        "open"
+        if allows["googlebot"] and allows["google_extended"]
+        else "closed"
+    )
+    for engine in ("openai", "claude", "perplexity"):
         blocked = any(
             not allows[slug]
             for slug, _agent, owner in AGENTS
@@ -247,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
         }
         for slug, _agent, _engine in AGENTS:
             row[f"allow_{slug}"] = "true" if allows[slug] else "false"
-        for engine in ENGINES:
+        for engine in ENGINE_COLUMNS:
             row[f"engine_{engine}"] = engines[engine]
         rows.append(row)
 
@@ -266,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     for status in ("ok", "unavailable", "unreachable"):
         if status in by_status:
             print(f"robots.txt {status}: {by_status[status]} stories")
-    for engine in ENGINES:
+    for engine in ENGINE_COLUMNS:
         closed = sum(1 for row in rows if row[f"engine_{engine}"] == "closed")
         print(f"{engine}: {len(rows) - closed} open / {closed} closed")
     print(f"Output: {out_path}")

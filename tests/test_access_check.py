@@ -5,6 +5,7 @@ from pathlib import Path
 from src import access_check
 from src.access_check import (
     AGENTS,
+    ENGINE_COLUMNS,
     ENGINES,
     assess_agents,
     robots_policy,
@@ -35,6 +36,7 @@ def test_2xx_disallows_claude_user_not_googlebot():
     assert allows["google_extended"] is True
     assert allows["claude_user"] is False
     assert engines["gemini"] == "open"
+    assert engines["gemini_with_extended"] == "open"
     assert engines["claude"] == "closed"
     assert engines["openai"] == "open"
     assert engines["perplexity"] == "open"
@@ -179,7 +181,16 @@ def test_unreachable_leaves_measured_fields_empty(monkeypatch, tmp_path):
     assert row["robots_sha256"] == ""
     assert row["robots_error"] == "timed out"
     assert all(row[f"allow_{slug}"] == "false" for slug, _a, _e in AGENTS)
-    assert all(row[f"engine_{engine}"] == "closed" for engine in ENGINES)
+    assert all(row[f"engine_{engine}"] == "closed" for engine in ENGINE_COLUMNS)
     assert row["page_http_status"] == ""
     assert row["page_final_url"] == ""
     assert row["page_error"] == "timed out"
+
+
+def test_google_extended_does_not_close_gemini():
+    policy = robots_policy(200, _text("google_extended_disallow.txt"))
+    allows, engines = assess_agents(policy, URL_A)
+    assert allows["googlebot"] is True
+    assert allows["google_extended"] is False
+    assert engines["gemini"] == "open"
+    assert engines["gemini_with_extended"] == "closed"
