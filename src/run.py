@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src import prices
+from src import prices, validate_sample
 from src.engines import claude, gemini, openai_engine, perplexity
 
 ENGINES = {
@@ -241,6 +241,19 @@ def main(argv: list[str] | None = None) -> int:
     queries = _read_queries(input_path)
     engine_names = _parse_engines(args.engines)
     run_id = args.run_id or _default_run_id()
+    if not run_id.startswith("cut-"):
+        problems, warnings = validate_sample.validate()
+        for warning in warnings:
+            print(f"WARNING: {warning}", file=sys.stderr)
+        if problems:
+            print(
+                f"STOP: sample validation failed with {len(problems)} "
+                f"problem(s); run not started.",
+                file=sys.stderr,
+            )
+            for problem in problems:
+                print(problem, file=sys.stderr)
+            return 4
     ceiling = _ceiling()
 
     run_dir = Path("runs") / run_id

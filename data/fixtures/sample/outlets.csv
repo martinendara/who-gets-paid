@@ -1,0 +1,4 @@
+outlet_id,name,country,hosts,rank_source
+T-01,Outlet One,AR,one.example.com,fixture
+T-02,Outlet Two,CL,two.example.com,fixture
+T-03,Outlet Three,CL,three.example.com,fixture

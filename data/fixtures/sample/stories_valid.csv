@@ -1,0 +1,10 @@
+story_id,outlet_id,country,url,original_url_aliases,published_at,origin_criterion,origin_evidence,fact_key,english_replica_url
+S01,T-01,AR,https://example.com/s01,,2026-01-10,attributed_exclusive,other outlet credits it,Fact one,
+S02,T-01,AR,https://example.com/s02,,2026-02-11T10:00:00-03:00,own_investigation,own documents,Fact two,
+S03,T-01,AR,https://example.com/s03,,2026-03-12,first_published,labeled exclusive,Fact three,https://example.com/en/replica
+S04,T-02,CL,https://example.com/s04,,2026-04-13,attributed_exclusive,other outlet credits it,Fact four,
+S05,T-02,CL,https://example.com/s05,,2026-05-14,own_investigation,own records,Fact five,
+S06,T-02,CL,https://example.com/s06,,2026-06-15,own_investigation,own request,Fact six,
+S07,T-03,CL,https://example.com/s07,,2026-07-16,attributed_exclusive,follow-up credits it,Fact seven,
+S08,T-03,CL,https://example.com/s08,,2026-08-16,own_investigation,own documents,Fact eight,
+S09,T-03,CL,https://example.com/s09,,2025-11-16,first_published,labeled exclusive,Fact nine,
