@@ -122,6 +122,8 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 
 ## 8. Human validation
 
+Amended on 2026-11-09; see §10.
+
 - A random 20% sample of labeled `(query_id, engine)` pairs is validated by a human coder.
 - Sampling is stratified by engine and, where possible, by answer language. The sampling frame is the set of answers with a valid record.
 - The human coder is blind to the classifier's label and to the engine name. The coder sees the query, the answer text, the citations, and the host-language table, and assigns `fact_present` (yes/no/wrong) and the A–E code.
@@ -145,4 +147,8 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 
 ## 10. Amendments
 
-None.
+### 2026-11-09 — Validation design (amends §8; recorded before any validation result was seen)
+The 20% random human sample in §8 is replaced by targeted adjudication. (1) A second blind classifier, from a model family that is neither audited nor the first classifier's (NVIDIA Nemotron via OpenRouter; the exact model id returned by the API is stored with every label), labels every answer with the same prompt (`classifier_v1`) and the same inputs (`fact_key` and answer text only). (2) Where the two classifiers disagree on `fact_present`, a human coder decides. (3) The human coder also labels 30 randomly selected pairs on which the classifiers agree (seed 20261109), to estimate shared errors. (4) The human coder sees the `fact_key`, the query and the answer text, and is blind to the engine and to both classifiers' labels. The human assigns `fact_present` only (yes/no/wrong); codes A–E follow from `fact_present` by the rules in §6. (5) The final `fact_present` is the human label for every pair the human coded, and the agreed label otherwise. Reported: agreement and Cohen's kappa between the two classifiers; agreement of each classifier with the human on the pairs the human coded; and the number of errors the human found among the 30 agreement checks. Reason: concentrate human effort where automated labels are uncertain while keeping a human check of shared errors. The provider's data-retention policy for this free endpoint is not stated in OpenRouter's API metadata (checked 2026-11-09); only the fact_key and the engine's answer text are sent.
+
+### 2026-11-09 — Uncertainty intervals
+In addition to counts, every rate in §7 is reported with a 95% percentile interval from a bootstrap that resamples stories with replacement (2,000 resamples, seed 20261109), because answers are clustered within 29 stories.
