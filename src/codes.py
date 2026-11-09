@@ -249,13 +249,20 @@ def main(argv: list[str] | None = None) -> int:
         help="url_language.csv path (exact URLs for mixed hosts)",
     )
     parser.add_argument(
+        "--labels",
+        default=None,
+        help="labels JSONL path (default: runs/<run-id>/labels_raw.jsonl)",
+    )
+    parser.add_argument(
         "--out", default=str(DEFAULT_OUT), help="labels.csv output path"
     )
     args = parser.parse_args(argv)
 
     run_dir = DEFAULT_RUNS_DIR / args.run_id
     answers_path = run_dir / "answers.jsonl"
-    labels_path = run_dir / "labels_raw.jsonl"
+    labels_path = (
+        Path(args.labels) if args.labels else run_dir / "labels_raw.jsonl"
+    )
     if not answers_path.exists():
         raise SystemExit(f"answers file not found: {answers_path}")
     if not labels_path.exists():
