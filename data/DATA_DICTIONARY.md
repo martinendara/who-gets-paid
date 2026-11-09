@@ -1,6 +1,6 @@
 # Data dictionary
 
-Schemas follow SPEC v0.2, section 6. The public versions are anonymized; the
+Schemas follow METHOD.md. The public versions are anonymized; the
 private versions (real outlet names and URLs) live in `data/private/` and are
 never committed.
 
@@ -18,6 +18,7 @@ never committed.
 | `origin_evidence` | string | URL or description supporting the origin criterion; stories that rest on public data are marked `public data` (D50) |
 | `fact_key` | string | The central fact in one sentence; `PENDING` until it is written |
 | `original_url_aliases` | string | Other URLs of the same story, separated by `|`; only in the private version; may be empty |
+| `saga` | string | Ongoing news saga the story belongs to; empty when none. At most two stories per outlet share a saga (checked by `src.validate_sample`) |
 
 ## `data/private/outlets.csv`
 

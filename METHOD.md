@@ -141,7 +141,7 @@ Let `N = A + B + C + D + E` (all valid answers) and `P = A + B + C + D` (answers
 - **Technical limitation (Interactions API):** Google's current documentation foregrounds the Interactions API, whose citations are `url_citation` annotations. This pilot uses `generateContent` because it still exposes `grounding_metadata.grounding_chunks` and `web_search_queries` (D16). If that surface is removed, the Gemini adapter must be amended before the next real run.
 - The pilot does not measure whether the original outlet was paid, only whether it was cited.
 - Claude Sonnet 5.5 (successor of the documented free-plan default) was replaced by Haiku 5.5, also available on the free plan, for cost reasons, before any real query.
-- A random 25% of the queries (29 of 116, seed 20261106, selected by `src/sample_repeat.py`) is re-run on all four engines on 20 November 2026, seven days after the main run. Agreement of codes between the two runs is reported per engine. The main metrics use only the main run.
+- A random 25% of the queries (29 of 116, seed 20261106, selected by `src/sample_repeat.py`) is re-run on all four engines seven days after the first day of the main run; both dates are recorded with the results. Agreement of codes between the two runs is reported per engine. The main metrics use only the main run.
 
 ## 10. Amendments
 
