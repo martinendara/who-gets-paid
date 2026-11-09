@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -29,6 +30,52 @@ DEFAULT_STORIES = Path("data/private/stories.csv")
 DEFAULT_RUNS_DIR = Path("runs")
 MAX_OUTPUT_TOKENS = 5
 VALID_LABELS = {"yes", "no", "wrong"}
+
+# OpenRouter model catalog checked 2026-11-09: this is the only
+# nvidia/nemotron-3-ultra*:free id, with prompt and completion price "0".
+# A test call returned exactly "yes" with reasoning disabled. With reasoning
+# enabled, the 5-token budget was spent on reasoning tokens and content was
+# empty, so reasoning stays disabled.
+NEMOTRON_MODEL_ID = "nvidia/nemotron-3-ultra-550b-a55b:free"
+
+
+@dataclass(frozen=True)
+class Judge:
+    name: str
+    label: str
+    model: str
+    base_url: str
+    api_key_env: str
+    extra_body: dict
+    default_output: str
+    local_pricing: bool
+
+
+JUDGES = {
+    "deepseek": Judge(
+        name="deepseek",
+        label="DeepSeek",
+        model=MODEL_ID,
+        base_url=BASE_URL,
+        api_key_env="DEEPSEEK_API_KEY",
+        extra_body={"thinking": {"type": "disabled"}},
+        default_output="labels_raw.jsonl",
+        local_pricing=True,
+    ),
+    "nemotron": Judge(
+        name="nemotron",
+        label="OpenRouter",
+        model=NEMOTRON_MODEL_ID,
+        base_url="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        extra_body={
+            "reasoning": {"enabled": False},
+            "usage": {"include": True},
+        },
+        default_output="labels_raw_judge2.jsonl",
+        local_pricing=False,
+    ),
+}
 
 
 def _utc_now() -> str:
@@ -134,22 +181,24 @@ def _retry_after_seconds(exc: Exception) -> float | None:
         return None
 
 
-def _call(client: OpenAI, prompt: str) -> tuple[dict | None, str | None]:
+def _call(
+    client: OpenAI, prompt: str, judge: Judge
+) -> tuple[dict | None, str | None]:
     for attempt in range(2):
         try:
             response = client.chat.completions.create(
-                model=MODEL_ID,
+                model=judge.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0,
                 max_tokens=MAX_OUTPUT_TOKENS,
-                extra_body={"thinking": {"type": "disabled"}},
+                extra_body=judge.extra_body,
             )
             return response.model_dump(), None
         except Exception as exc:  # noqa: BLE001 - handled as a failed pair
             status = _status_code(exc)
             if status == 401 or isinstance(exc, AuthenticationError):
                 raise SystemExit(
-                    "DeepSeek 401 Unauthorized: check DEEPSEEK_API_KEY"
+                    f"{judge.label} 401 Unauthorized: check {judge.api_key_env}"
                 ) from exc
             if attempt == 0 and (
                 status == 429 or isinstance(exc, RateLimitError)
@@ -160,21 +209,25 @@ def _call(client: OpenAI, prompt: str) -> tuple[dict | None, str | None]:
                 time.sleep(delay)
                 continue
             return None, f"{type(exc).__name__}: {exc}"
-    return None, "DeepSeek request failed after one retry"
+    return None, f"{judge.label} request failed after one retry"
 
 
 def _extract(data: dict) -> dict:
     choices = data.get("choices") or []
     message = (choices[0].get("message") if choices else {}) or {}
     usage_raw = data.get("usage") or {}
+    usage = {
+        "input_tokens": usage_raw.get("prompt_tokens"),
+        "output_tokens": usage_raw.get("completion_tokens"),
+    }
+    raw_cost = usage_raw.get("cost")
+    if isinstance(raw_cost, (int, float)) and not isinstance(raw_cost, bool):
+        usage["cost_usd"] = float(raw_cost)
     return {
         "raw": message.get("content"),
         "model": data.get("model"),
         "fingerprint": data.get("system_fingerprint"),
-        "usage": {
-            "input_tokens": usage_raw.get("prompt_tokens"),
-            "output_tokens": usage_raw.get("completion_tokens"),
-        },
+        "usage": usage,
     }
 
 
@@ -188,10 +241,39 @@ def _sum_usages(usages: list[dict | None]) -> dict | None:
             usage.get("output_tokens"), (int, float)
         ):
             return None
-    return {
+    total = {
         "input_tokens": sum(usage["input_tokens"] for usage in usages),
         "output_tokens": sum(usage["output_tokens"] for usage in usages),
     }
+    costs = [
+        float(usage["cost_usd"])
+        for usage in usages
+        if isinstance(usage.get("cost_usd"), (int, float))
+        and not isinstance(usage.get("cost_usd"), bool)
+    ]
+    if costs:
+        total["cost_usd"] = sum(costs)
+    return total
+
+
+def _judge_cost(judge: Judge, usage: dict | None) -> float | None:
+    if judge.local_pricing:
+        return prices.classifier_cost(usage)
+    # The OpenRouter model is :free (catalog prompt/completion price 0);
+    # prefer the cost reported in the response, and fall back to 0.0.
+    if isinstance(usage, dict):
+        value = usage.get("cost_usd")
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+    return 0.0
+
+
+def _already_labeled(record: dict | None, judge: Judge) -> bool:
+    return bool(
+        record
+        and record.get("classifier_model") == judge.model
+        and record.get("prompt_version") == PROMPT_VERSION
+    )
 
 
 def _append(path: Path, record: dict) -> None:
@@ -213,13 +295,20 @@ def main(argv: list[str] | None = None) -> int:
         "--stories", default=str(DEFAULT_STORIES), help="stories.csv path"
     )
     parser.add_argument(
-        "--out", default=None, help="labels_raw.jsonl path"
+        "--out", default=None, help="labels output path"
+    )
+    parser.add_argument(
+        "--judge",
+        choices=sorted(JUDGES),
+        default="deepseek",
+        help="classifier judge (default: deepseek)",
     )
     args = parser.parse_args(argv)
+    judge = JUDGES[args.judge]
 
-    if not os.environ.get("DEEPSEEK_API_KEY"):
+    if not os.environ.get(judge.api_key_env):
         print(
-            "DEEPSEEK_API_KEY is not set. Load it with: "
+            f"{judge.api_key_env} is not set. Load it with: "
             "set -a && source .env && set +a",
             file=sys.stderr,
         )
@@ -227,7 +316,9 @@ def main(argv: list[str] | None = None) -> int:
 
     run_dir = DEFAULT_RUNS_DIR / args.run_id
     answers_path = run_dir / "answers.jsonl"
-    output_path = Path(args.out) if args.out else run_dir / "labels_raw.jsonl"
+    output_path = (
+        Path(args.out) if args.out else run_dir / judge.default_output
+    )
 
     if not answers_path.exists():
         raise SystemExit(f"answers file not found: {answers_path}")
@@ -268,11 +359,7 @@ def main(argv: list[str] | None = None) -> int:
     for pair, answer in answers.items():
         query_id = pair[0]
         current = existing.get(pair)
-        if (
-            current
-            and current.get("classifier_model") == MODEL_ID
-            and current.get("prompt_version") == PROMPT_VERSION
-        ):
+        if _already_labeled(current, judge):
             skipped += 1
             continue
         if query_id not in query_to_story:
@@ -301,8 +388,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     client = OpenAI(
-        api_key=os.environ["DEEPSEEK_API_KEY"],
-        base_url=BASE_URL,
+        api_key=os.environ[judge.api_key_env],
+        base_url=judge.base_url,
         max_retries=0,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -310,6 +397,7 @@ def main(argv: list[str] | None = None) -> int:
     written = 0
     failed = 0
     stopped = False
+    observed_model: str | None = None
     for pair, answer, fact_key in pending:
         if known_cost >= ceiling:
             print(
@@ -328,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
         last: dict | None = None
         label: str | None = None
         for _ in range(2):
-            data, error = _call(client, prompt)
+            data, error = _call(client, prompt, judge)
             if data is None:
                 failed += 1
                 print(
@@ -337,6 +425,16 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 break
             last = _extract(data)
+            if observed_model is None:
+                observed_model = last["model"]
+            elif last["model"] != observed_model:
+                print(
+                    "STOP: judge model changed from "
+                    f"{observed_model!r} to {last['model']!r}; "
+                    "no further calls were made.",
+                    file=sys.stderr,
+                )
+                return 3
             usages.append(last["usage"])
             normalized = _normalize(last["raw"])
             if normalized in VALID_LABELS:
@@ -348,10 +446,11 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         usage = _sum_usages(usages)
-        cost = prices.classifier_cost(usage)
+        cost = _judge_cost(judge, usage)
         record = {
             "query_id": pair[0],
             "engine": pair[1],
+            "judge": judge.name,
             "fact_present": label,
             "raw_output": last["raw"],
             "classifier_model": last["model"],
