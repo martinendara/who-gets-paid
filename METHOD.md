@@ -156,3 +156,9 @@ In addition to counts, every rate in §7 is reported with a 95% percentile inter
 
 ### 2026-11-11 — Human coding guideline and rounding check (recorded after human coding)
 The human coder compared each answer with the `fact_key`, not with external reality. An answer counts as stating the fact when it conveys its central claim, even with different wording, emphasis or rounded figures; `wrong` is meant only for a different key detail (figure, person, date or place). Because rounded figures may have been coded as `wrong`, every human `wrong` label was then re-checked by the first classifier with a single question (`prompts/rounding_check_v1.md`): whether the only difference is a rounded or approximated figure. Where it answered yes, the final label is `yes`; otherwise the human label stands. The original human labels and the check outputs are kept (`runs/<run_id>/rounding_check.jsonl`, `review_<run_id>.before_rounding.csv`, private), and the number of labels changed is reported.
+
+### 2026-11-11 — Headline on direct questions (recorded after human coding)
+In the 30 human checks of pairs on which both classifiers agreed, the human changed 9 labels, all on open-ended questions; on direct questions all 12 checks agreed. Open-ended answers often embed the fact in a longer text that both classifiers missed. Therefore the headline results are reported on direct questions; results on open-ended questions are reported as exploratory, and their fact-presence rate is a lower bound.
+
+### 2026-11-11 — Volatility comparison (recorded before the repeat run)
+The repeat run is labeled by the first classifier only, and agreement of codes is computed using first-classifier labels in both runs, without human adjudication, so that the comparison reflects changes in the engines rather than differences between coders.
