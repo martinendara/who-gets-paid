@@ -144,6 +144,7 @@ Amended on 2026-11-09; see §10.
 - The pilot does not measure whether the original outlet was paid, only whether it was cited.
 - Claude Sonnet 5.5 (successor of the documented free-plan default) was replaced by Haiku 5.5, also available on the free plan, for cost reasons, before any real query.
 - A random 25% of the queries (29 of 116, seed 20261106, selected by `src/sample_repeat.py`) is re-run on all four engines seven days after the first day of the main run; both dates are recorded with the results. Agreement of codes between the two runs is reported per engine. The main metrics use only the main run.
+- Code A means that the engine cited the original outlet's host; the pilot does not verify that the cited page supports the fact stated in the answer. Checking citation support is left for future work.
 
 ## 10. Amendments
 
@@ -152,3 +153,6 @@ The 20% random human sample in §8 is replaced by targeted adjudication. (1) A s
 
 ### 2026-11-09 — Uncertainty intervals
 In addition to counts, every rate in §7 is reported with a 95% percentile interval from a bootstrap that resamples stories with replacement (2,000 resamples, seed 20261109), because answers are clustered within 29 stories.
+
+### 2026-11-11 — Human coding guideline and rounding check (recorded after human coding)
+The human coder compared each answer with the `fact_key`, not with external reality. An answer counts as stating the fact when it conveys its central claim, even with different wording, emphasis or rounded figures; `wrong` is meant only for a different key detail (figure, person, date or place). Because rounded figures may have been coded as `wrong`, every human `wrong` label was then re-checked by the first classifier with a single question (`prompts/rounding_check_v1.md`): whether the only difference is a rounded or approximated figure. Where it answered yes, the final label is `yes`; otherwise the human label stands. The original human labels and the check outputs are kept (`runs/<run_id>/rounding_check.jsonl`, `review_<run_id>.before_rounding.csv`, private), and the number of labels changed is reported.
