@@ -797,6 +797,9 @@ def main(argv: list[str] | None = None) -> int:
         "cuts": cuts,
         "gaps": gaps,
         "secondary": _secondary(rows),
+        "secondary_direct": _secondary(
+            _subset(rows, lambda r: r["type"] == "direct")
+        ),
         "validation": _validation(
             judge1_path, judge2_path, review_path, key_path, rounding_path
         ),

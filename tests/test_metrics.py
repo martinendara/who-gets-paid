@@ -1,5 +1,8 @@
 """Offline tests for the metrics module and its story bootstrap (D74)."""
 
+import csv
+import json
+
 import pytest
 
 from src import metrics
@@ -157,3 +160,136 @@ def test_percentile_edges():
     assert metrics._percentile([], 50) is None
     assert metrics._percentile([0.4], 2.5) == 0.4
     assert metrics._percentile([0.0, 1.0], 50) == 0.5
+
+
+def _write_csv(path, fieldnames, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(
+            dict(zip(fieldnames, row)) if isinstance(row, list) else row
+            for row in rows
+        )
+    return path
+
+
+def _empty(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("", encoding="utf-8")
+    return path
+
+
+def test_secondary_direct_key_uses_only_direct_rows(tmp_path):
+    labels = _write_csv(
+        tmp_path / "labels.csv",
+        [
+            "query_id",
+            "engine",
+            "fact_present",
+            "code",
+            "d_split",
+            "original_in_retrieved",
+            "original_url_cited",
+        ],
+        [
+            # direct: openai found-but-not-cited, claude E row.
+            ["Q1", "openai", "yes", "B", "", "true", "false"],
+            ["Q1", "claude", "no", "E", "", "", "true"],
+            # open: neither engine adds to found-but-not-cited.
+            ["Q2", "openai", "yes", "A", "", "true", "true"],
+            ["Q2", "claude", "yes", "C", "", "false", "false"],
+        ],
+    )
+    queries = _write_csv(
+        tmp_path / "queries.csv",
+        ["query_id", "story_id", "lang", "type"],
+        [
+            ["Q1", "S1", "es", "direct"],
+            ["Q2", "S2", "en", "open"],
+        ],
+    )
+    stories = _write_csv(
+        tmp_path / "stories.csv",
+        ["story_id", "outlet_id", "country", "english_replica_url"],
+        [
+            ["S1", "O1", "AR", "https://en.example/s1"],
+            ["S2", "O2", "US", "https://en.example/s2"],
+        ],
+    )
+    access_columns = [
+        "story_id",
+        "engine_gemini",
+        "engine_gemini_with_extended",
+        "engine_openai",
+        "engine_claude",
+        "engine_perplexity",
+    ]
+    access = _write_csv(
+        tmp_path / "access.csv",
+        access_columns,
+        [
+            ["S1", "open", "open", "open", "open", "open"],
+            ["S2", "open", "open", "open", "open", "open"],
+        ],
+    )
+    answers = _empty(tmp_path / "answers.jsonl")
+    judge1 = _empty(tmp_path / "labels_raw.jsonl")
+    judge2 = _empty(tmp_path / "labels_raw_judge2.jsonl")
+    rounding = _empty(tmp_path / "rounding_check.jsonl")
+    review = _write_csv(
+        tmp_path / "review.csv",
+        ["review_id", "human_fact_present"],
+        [],
+    )
+    key = _write_csv(tmp_path / "review_key.csv", ["review_id", "judge1", "set"], [])
+    out = tmp_path / "metrics.json"
+
+    assert (
+        metrics.main(
+            [
+                "--run-id",
+                "t",
+                "--labels",
+                str(labels),
+                "--queries",
+                str(queries),
+                "--stories",
+                str(stories),
+                "--access",
+                str(access),
+                "--answers",
+                str(answers),
+                "--labels-raw",
+                str(judge1),
+                "--labels-raw-judge2",
+                str(judge2),
+                "--review",
+                str(review),
+                "--review-key",
+                str(key),
+                "--rounding-check",
+                str(rounding),
+                "--out",
+                str(out),
+                "--out-outlets",
+                str(tmp_path / "outlets.csv"),
+                "--resamples",
+                "20",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert "secondary_direct" in payload
+
+    rows = metrics.load_rows(labels, queries, stories)
+    direct_rows = [row for row in rows if row["type"] == "direct"]
+    assert payload["secondary_direct"] == metrics._secondary(direct_rows)
+    # The direct cut must differ from the all-questions cut here: the direct
+    # openai found-but-not-cited rate is 1/1, the overall one 1/2.
+    assert (
+        payload["secondary_direct"]["found_not_cited"]["openai"]["value"]
+        == 1.0
+    )
+    assert payload["secondary"]["found_not_cited"]["openai"]["value"] == 0.5
