@@ -162,3 +162,6 @@ In the 30 human checks of pairs on which both classifiers agreed, the human chan
 
 ### 2026-11-11 — Volatility comparison (recorded before the repeat run)
 The repeat run is labeled by the first classifier only, and agreement of codes is computed using first-classifier labels in both runs, without human adjudication, so that the comparison reflects changes in the engines rather than differences between coders.
+
+### 2026-11-16 — Secondary metrics on direct questions (recorded after results were seen)
+The two secondary metrics (found-but-not-cited and exact-story-cited) are also reported on direct questions only, so that they share the denominator of the headline results. The values on all questions are still reported.
