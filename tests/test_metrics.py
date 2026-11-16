@@ -150,10 +150,35 @@ def test_found_not_cited_and_story_cited_numerators():
     assert counts["p"] == 4
     # fact yes, retrieved true, code != A: only the S1 B row qualifies.
     assert counts["fnc"] == 1
-    # story cited counts every cited URL, including the fact-absent row.
-    assert counts["cited"] == 3
+    # story cited counts only cited URLs on rows with the fact (codes A-D);
+    # the E row cites the story but lacks the fact, so it does not count.
+    assert counts["cited"] == 2
     assert metrics.METRIC_VALUES["found_not_cited"](counts) == pytest.approx(0.25)
-    assert metrics.METRIC_VALUES["story_cited"](counts) == pytest.approx(0.75)
+    assert metrics.METRIC_VALUES["story_cited"](counts) == pytest.approx(0.5)
+
+
+def test_story_cited_never_exceeds_fact_present():
+    codes = ("A", "B", "C", "D", "E")
+    cited_values = ("", "true", "false")
+    rows = [
+        _row(
+            f"S{index}",
+            code=code,
+            d_split="none",
+            retrieved="true" if index % 2 else "false",
+            cited=cited,
+        )
+        for index, (code, cited) in enumerate(
+            (code, cited)
+            for code in codes
+            for cited in cited_values
+        )
+    ]
+    counts = metrics._counts(rows)
+    assert counts["cited"] <= counts["p"]
+    story_cited = metrics.METRIC_VALUES["story_cited"](counts)
+    if counts["p"]:
+        assert story_cited is not None and story_cited <= 1.0
 
 
 def test_percentile_edges():

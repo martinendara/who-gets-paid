@@ -279,7 +279,7 @@ def _counts(rows: list[dict]) -> dict[str, int]:
             and code != "A"
         ):
             counts["fnc"] += 1
-        if row["original_url_cited"] == "true":
+        if row["original_url_cited"] == "true" and code in ("A", "B", "C", "D"):
             counts["cited"] += 1
         if row["lang"] == "es":
             if code in ("A", "B", "C", "D"):
