@@ -1,0 +1,126 @@
+{
+  "by_engine": {
+    "claude": {
+      "a_both": 8,
+      "a_main": 9,
+      "a_repeat": 10,
+      "agreement": 0.7241379310344828,
+      "n": 29,
+      "same_code": 21,
+      "same_fact_present": 23,
+      "transitions": {
+        "A->B": 1,
+        "B->A": 1,
+        "B->E": 2,
+        "E->A": 1,
+        "E->B": 3
+      }
+    },
+    "gemini": {
+      "a_both": 6,
+      "a_main": 8,
+      "a_repeat": 7,
+      "agreement": 0.8275862068965517,
+      "n": 29,
+      "same_code": 24,
+      "same_fact_present": 24,
+      "transitions": {
+        "A->E": 2,
+        "B->E": 1,
+        "E->A": 1,
+        "E->C": 1
+      }
+    },
+    "openai": {
+      "a_both": 11,
+      "a_main": 14,
+      "a_repeat": 14,
+      "agreement": 0.7586206896551724,
+      "n": 29,
+      "same_code": 22,
+      "same_fact_present": 26,
+      "transitions": {
+        "A->B": 2,
+        "A->E": 1,
+        "B->A": 1,
+        "C->A": 1,
+        "E->A": 1,
+        "E->B": 1
+      }
+    },
+    "perplexity": {
+      "a_both": 10,
+      "a_main": 11,
+      "a_repeat": 12,
+      "agreement": 0.7931034482758621,
+      "n": 29,
+      "same_code": 23,
+      "same_fact_present": 26,
+      "transitions": {
+        "A->B": 1,
+        "B->A": 1,
+        "B->C": 1,
+        "C->E": 1,
+        "E->A": 1,
+        "E->C": 1
+      }
+    }
+  },
+  "by_type": {
+    "direct": {
+      "a_both": 21,
+      "a_main": 25,
+      "a_repeat": 26,
+      "agreement": 0.7727272727272727,
+      "n": 44,
+      "same_code": 34,
+      "same_fact_present": 42,
+      "transitions": {
+        "A->B": 4,
+        "B->A": 3,
+        "B->E": 1,
+        "C->A": 1,
+        "E->A": 1
+      }
+    },
+    "open": {
+      "a_both": 14,
+      "a_main": 17,
+      "a_repeat": 17,
+      "agreement": 0.7777777777777778,
+      "n": 72,
+      "same_code": 56,
+      "same_fact_present": 57,
+      "transitions": {
+        "A->E": 3,
+        "B->C": 1,
+        "B->E": 2,
+        "C->E": 1,
+        "E->A": 3,
+        "E->B": 4,
+        "E->C": 2
+      }
+    }
+  },
+  "total": {
+    "a_both": 35,
+    "a_main": 42,
+    "a_repeat": 43,
+    "agreement": 0.7758620689655172,
+    "n": 116,
+    "same_code": 90,
+    "same_fact_present": 99,
+    "transitions": {
+      "A->B": 4,
+      "A->E": 3,
+      "B->A": 3,
+      "B->C": 1,
+      "B->E": 3,
+      "C->A": 1,
+      "C->E": 1,
+      "E->A": 4,
+      "E->B": 4,
+      "E->C": 2
+    }
+  }
+}
